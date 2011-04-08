@@ -1,0 +1,12 @@
+import os
+import sys
+
+pkg_config_cmd = "pkg-config"
+
+if sys.platform == "darwin":
+   pkg_config_cmd = '/opt/local/bin/pkg-config'
+
+env = Environment()
+env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
+env.Program('ntetris', ['tetris.c',], LIBS=['glib-2.0', 'ncurses'], CFLAGS='-g')
+
