@@ -226,7 +226,7 @@ void InitTerminal(STATE* state)
     }
 
     for(X = 1; X <= 8; X++) {
-        init_pair(X, X, 0);
+        init_pair(X, X, X);
         init_pair(X + 20, X, 0);
     }
 
