@@ -113,7 +113,7 @@ int ParseOptions(STATE *state, int argc, char *argv[])
                     return 0;
                 }
 
-                state->Bx = height;
+                state->By = height;
                 break;
             case 'd':
                 delay = strtonum(optarg, 0, 10, &err_str);
