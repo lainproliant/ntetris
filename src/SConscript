@@ -2,11 +2,21 @@ import os
 import sys
 
 pkg_config_cmd = "pkg-config"
+liblist = ['glib-2.0', 'ncurses']
+cflags = '-g'
+ntetris_cfiles = ['tetris.c', ]
 
 if sys.platform == "darwin":
    pkg_config_cmd = '/opt/local/bin/pkg-config'
 
-env = Environment()
+if 'linux' in sys.platform:
+  liblist.append('bsd')
+
+if 'sunos' in sys.platform:
+  cflags = ' '.join((cflags, '-I/usr/include/ncurses'))
+  ntetris_cfiles.append('strtonum.c')
+
+env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
-env.Program('ntetris', ['tetris.c',], LIBS=['glib-2.0', 'ncurses'], CFLAGS='-g')
+env.Program('ntetris', ntetris_cfiles, LIBS=liblist, CFLAGS=cflags)
 

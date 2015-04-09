@@ -7,11 +7,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <getopt.h>
 #include <signal.h>
 #include <time.h>
 #include <ncurses.h>
 #include <glib.h>
 #include "tetris.h"
+#include <limits.h>
+
+#ifdef __linux__
+#include <bsd/stdlib.h>
+#endif
+
+#ifdef __sun
+#include "strtonum.h"
+#endif
 
 #define TETRIS_DEBUG
 
@@ -41,113 +52,110 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-int ParseOptions(STATE* state, int argc, char* argv[])
+int ParseOptions(STATE *state, int argc, char *argv[])
 {
-    size_t X;
+    int go_ret, width, height, delay, level;
+    const char *err_str;
+    char *next_key = NULL;
+    char *next_key_val = NULL;
 
-    for (X = 1; X < argc; X++) {
-        if (! strcmp(argv[X], "-x")) {
-            // set width of field
-            if (X + 1 >= argc) {
-                fprintf(stderr, "<ntetris>\tNo width field specified.\n");
-                return 0;
-            }
-            sscanf(argv[++X], "%d", &state->Bx);
-        } else if (! strcmp(argv[X], "-y")) {
-            // set height of field
-            if (X + 1 >= argc) {
-                fprintf(stderr, "<ntetris>\tNo height field specified.\n");
-                return 0;
-            }
-            sscanf(argv[++X], "%d", &state->By);
-        } else if (! strcmp(argv[X], "-L")) {
-            // set level
-            if (X + 1 >= argc) {
-                fprintf(stderr, "<ntetris>\tNo level field specified.\n");
-                return 0;
-            }
-            sscanf(argv[++X], "%d", &state->init_level);
-        } else if (! strcmp(argv[X], "--clear")) {
-            // set line clearing options
+    static struct option longopts[] = {
+         { "clear",      required_argument,  NULL, 'c' },
+         { "level",      required_argument,  NULL, 'L' },
+         { "width",      required_argument,  NULL, 'x' },
+         { "height",     required_argument,  NULL, 'y' },
+         { "delay",      required_argument,  NULL, 'd' },
+         { "pause-show", no_argument,        NULL, 'p' },
+         { "keys",       required_argument,  NULL, 'k' },
+         { NULL,         0,                  NULL, 0 }
+    };
 
-            if (X + 1 >= argc) {
-                fprintf(stderr, "<ntetris>\tNo line clear mode specified.\n");
-                return 0;
-            }
 
-            X ++;
-            if (! strcmp(argv[X], "none")) {
-                state->do_clear = CLEAR_NONE;
-            } else if (! strcmp(argv[X], "flash")) {
-                state->do_clear = CLEAR_FLASH;
-            } else if (! strcmp(argv[X], "blank")) {
-                state->do_clear = CLEAR_BLANK;
-            } else {
-                fprintf(stderr, "<ntetris>\tInvalid line clear mode: \"%s\"\n",
-                        argv[X]);
-                return 0;
-            }
-        } else if (! strcmp(argv[X], "--delay")) {
-            // set line clear delay
-
-            if (X + 1 >= argc) {
-                fprintf(stderr, "<ntetris>\tNo clear delay field specified.\n");
-                return 0;
-            }
-
-            sscanf(argv[++X], "%d", &state->line_clear_timeout);
-        } else if (! strcmp(argv[X], "--pause-show")) {
-            // toggle pause block hiding
-
-            state->do_pause_blocks = ! state->do_pause_blocks;
-        } else if (! strcmp(argv[X], "--keys")) {
-            // the remaining parameters are keys, until 'done'
-            size_t Y;
-
-            if (X + 1 >= argc) {
-                fprintf(stderr, "<ntetris>\tMissing key configuration.\n");
-                fprintf(stderr, "Example: %s --keys quit :q pause :p reset :r drop 259 lower 258 left 260 right 261 rotcw :a rotccw :s done\n", argv[0]);
-                fprintf(stderr, "\tNote that \'done\' is only required if other parameters follow the key config.\n");
-                return 0;
-            }
-
-            for (Y = X + 1; Y < argc; Y++) {
-                size_t A;
-
-                if (! strcmp(argv[Y], "done")) {
-                    break;
+    while ((go_ret = getopt_long(argc, argv, "c:L:x:y:d:k:p", longopts, NULL)) != -1) {
+        switch (go_ret) {
+            case 'c':
+                if (! strcmp(optarg, "none")) {
+                    state->do_clear = CLEAR_NONE;
+                } else if (! strcmp(optarg, "flash")) {
+                    state->do_clear = CLEAR_FLASH;
+                } else if (! strcmp(optarg, "blank")) {
+                    state->do_clear = CLEAR_BLANK;
+                } else {
+                    fprintf(stderr, "<ntetris>\tInvalid line clear mode: \"%s\"\n",
+                            optarg);
+                    return 0;
                 }
-
-                if (Y + 1 >= argc) {
-                    fprintf(stderr, "<ntetris>\tMissing key literal after \'%s\'\n",
-                            argv[Y]);
+                break;
+            case 'L':
+                fprintf(stderr,"%s\n", optarg);
+                level = strtonum(optarg, 1, 1000, &err_str);
+                if (err_str) {
+                    fprintf(stderr, "error parsing level field: %s\n", err_str);
                     return 0;
                 }
 
-                for (A = 0; A < TETRIS_KEYS; A++) {
-                    if (! strcmp(keymap_desc[A], argv[Y])) {
-                        state->keymap[A] = KeyParse(argv[Y + 1]);
-                        Y ++;
-                        break;
-                    }
-                }
-
-                if (A >= TETRIS_KEYS) {
-                    fprintf(stderr, "<ntetris>\tAction not supported: \"%s\".\n",
-                            argv[Y]);
+                state->init_level = level;
+                break;
+            case 'x':
+                /* Let's use the bsd safe strtonum functions for this */
+                width = strtonum(optarg, 10, 1000, &err_str);
+                if (err_str) {
+                    fprintf(stderr, "error parsing width field: %s\n", err_str);
                     return 0;
                 }
-            }
 
-            // skip what we just parsed in the main parser
-            X = Y;
-        } else {
-            fprintf(stderr, "<ntetris>\tUnrecognized parameter: \"%s\"\n",
-                    argv[X]);
+                state->Bx = width;
+                break;
+            case 'y':
+                height = strtonum(optarg, 10, 1000, &err_str);
+                if (err_str) {
+                    fprintf(stderr, "error parsing height field: %s\n", err_str);
+                    return 0;
+                }
+
+                state->Bx = height;
+                break;
+            case 'd':
+                delay = strtonum(optarg, 0, 10, &err_str);
+                if (err_str) {
+                    fprintf(stderr, "error parsing delay field: %s\n", err_str);
+                    return 0;
+                }
+
+                state->line_clear_timeout = delay;
+                break;
+            case 'p':
+                state->do_pause_blocks = !state->do_pause_blocks;
+                break;
+            case 'k':
+                    while ((next_key = strsep(&optarg, " ")) != NULL) {
+
+                        size_t A;
+                        next_key_val = strsep(&optarg, " ");
+
+                        for (A = 0; A < TETRIS_KEYS; A++) {
+                            if (! strcmp(keymap_desc[A], next_key)) {
+                                state->keymap[A] = KeyParse(next_key_val);
+                                break;
+                            }
+                        }
+
+                        if (A >= TETRIS_KEYS) {
+                            fprintf(stderr, "<ntetris>\tAction not supported: \"%s\".\n",
+                                    next_key);
+                            return 0;
+                        }
+                }
+                break;
+            default:
+                return 0;
+                break;
         }
+
     }
 
     return 1;
+
 }
 
 STATE* Init(int argc, char* argv[])
@@ -991,7 +999,7 @@ int KeyParse(const char* str)
 
     if (str[0] == ':') {
         // numerical character
-        sscanf(str, ":%d", &i);
+        sscanf(str, ":%c", &i);
     } else {
         // read from string
         int X;
