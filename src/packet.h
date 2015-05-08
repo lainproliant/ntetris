@@ -45,7 +45,3 @@ typedef struct _msg_create_room {
     unsigned char roomName[0];
 } msg_create_room;
 
-msg_update_tetrad tetrad;
-TLV *pTLV = malloc(sizeof(TLV) + sizeof(msg_update_tetrad));
-
-
