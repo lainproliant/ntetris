@@ -10,8 +10,15 @@ typedef enum _MSG_TYPE {
     DISCONNECT_CLIENT,
     KICK_CLIENT,
     CREATE_ROOM,
+    USER_ACTION,
     NUM_MESSAGES
 } MSG_TYPE;
+
+typedef enum _USER_CMD {
+   ROTCW = 0,
+   ROTCCW = 1,
+   LOWER = 2
+} USER_CMD;
 
 typedef struct _TLV {
     uint8_t type;
@@ -44,4 +51,8 @@ typedef struct _msg_create_room {
     uint8_t roomNameLen;
     unsigned char roomName[0];
 } msg_create_room;
+
+typedef struct _msg_user_action {
+    uint8_t cmd;
+}
 
