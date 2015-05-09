@@ -999,7 +999,7 @@ int KeyParse(const char* str)
 
     if (str[0] == ':') {
         // numerical character
-        sscanf(str, ":%c", &i);
+        sscanf(str, ":%d", &i);
     } else {
         // read from string
         int X;
