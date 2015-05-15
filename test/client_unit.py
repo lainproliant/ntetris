@@ -42,6 +42,25 @@ class UpdateTetrad(Message):
 	def setRotation(self, rot):
 		self.rot = rot
 
+class UpdateClientState(Message):
+	type = MessageType.UPDATE_CLIENT_STATE
+	length = 14
+
+	def setLines(self, lines):
+		self.lines = lines
+	
+	def setScore(self, score):
+		self.score = score
+
+	def setLevel(self, level):
+		self.level = level
+
+	def setStatus(self, status):
+		self.status = status
+	
+	def setLinesChanges(self, lines_changed):
+		self.lines_changed = lines_changed
+
 
 def main():
 
