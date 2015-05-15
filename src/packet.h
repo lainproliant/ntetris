@@ -54,5 +54,4 @@ typedef struct _msg_create_room {
 
 typedef struct _msg_user_action {
     uint8_t cmd;
-}
-
+} msg_user_action;
