@@ -5,7 +5,7 @@ pkg_config_cmd = "pkg-config"
 srvliblist = ['glib-2.0', 'ncurses', 'uv']
 liblist = ['glib-2.0', 'ncurses', 'mtmalloc']
 cflags = '-m64 -I/usr/local/include'
-linkflags = '-m64 -L/usr/lib/64'
+linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
 
 ntetris_cfiles = ['tetris.c', ]
 ntetris_srv_files = ['tetris_serv.c' ]
