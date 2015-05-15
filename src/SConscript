@@ -2,8 +2,8 @@ import os
 import sys
 
 pkg_config_cmd = "pkg-config"
-srvliblist = ['glib-2.0', 'ncurses', 'uv']
-liblist = ['glib-2.0', 'ncurses', 'mtmalloc']
+srvliblist = ['glib-2.0', 'ncurses', 'uv', 'mtmalloc']
+liblist = ['glib-2.0', 'ncurses']
 cflags = '-m64 -I/usr/local/include'
 linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
 
