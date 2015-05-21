@@ -1,0 +1,6 @@
+src/ntetris
+*.o
+*.out
+*.a
+*.so
+*.dblite

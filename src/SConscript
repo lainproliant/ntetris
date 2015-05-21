@@ -2,9 +2,13 @@ import os
 import sys
 
 pkg_config_cmd = "pkg-config"
-liblist = ['glib-2.0', 'ncurses']
-cflags = '-g'
+srvliblist = ['glib-2.0', 'ncurses', 'uv']
+liblist = ['glib-2.0', 'ncurses', 'mtmalloc']
+cflags = '-m64 -I/usr/local/include'
+linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
+
 ntetris_cfiles = ['tetris.c', ]
+ntetris_srv_files = ['tetris_serv.c' ]
 
 if sys.platform == "darwin":
    pkg_config_cmd = '/opt/local/bin/pkg-config'
@@ -15,8 +19,11 @@ if 'linux' in sys.platform:
 if 'sunos' in sys.platform:
   cflags = ' '.join((cflags, '-I/usr/include/ncurses'))
   ntetris_cfiles.append('strtonum.c')
+  ntetris_srv_files.append('strtonum.c')
 
 env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
-env.Program('ntetris', ntetris_cfiles, LIBS=liblist, CFLAGS=cflags)
+env.Program('ntetris', ntetris_cfiles, LIBS=liblist, CFLAGS=cflags, LINKFLAGS=linkflags)
+
+env.Program('ntetris_srv', ntetris_srv_files, LIBS=srvliblist, CFLAGS=cflags, LINKFLAGS=linkflags)
 

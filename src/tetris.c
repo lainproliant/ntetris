@@ -995,11 +995,13 @@ int Power(int a, int x)
 
 int KeyParse(const char* str)
 {
+    unsigned char c;
     int i;
 
     if (str[0] == ':') {
         // numerical character
-        sscanf(str, ":%c", &i);
+        sscanf(str, ":%c", &c);
+        i = (unsigned char)c;
     } else {
         // read from string
         int X;
