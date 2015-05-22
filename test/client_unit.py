@@ -5,16 +5,15 @@ import struct
 import socket
 import sys
 
-class MessageType(Enum):
-    REGISTER_TETRAD = 0 
-    REGISTER_CLIENT = 1
-    UPDATE_TETRAD = 2
-    UPDATE_CLIENT_STATE = 3
-    DISCONNECT_CLIENT = 4
-    KICK_CLIENT = 5
-    CREATE_ROOM = 6
-    USER_ACTION = 7
-    NUM_MESSAGES = 8 
+REGISTER_TETRAD = 0 
+REGISTER_CLIENT = 1
+UPDATE_TETRAD = 2
+UPDATE_CLIENT_STATE = 3
+DISCONNECT_CLIENT = 4
+KICK_CLIENT = 5
+CREATE_ROOM = 6
+USER_ACTION = 7
+NUM_MESSAGES = 8 
 
 
 class Message:
@@ -23,26 +22,25 @@ class Message:
 
 
 class RegisterTetrad(Message):
-	type = MessageType.REGISTER_TETRAD
+	type = REGISTER_TETRAD
 
 	def pack(self):
-		return struct.pack("!ch", self.type, 0)
+		return struct.pack("!Bh", self.type, 0)
 
 class RegisterClient(Message):
-	type = MessageType.REGISTER_CLIENT
-	length = 0 
+	type = REGISTER_CLIENT
 	name = "" 
 
 	def setName(self, name):
 		self.name = name
-		length = length + len(name)
+		self.length = self.length + len(name)
 	def pack(self):
-		return struct.pack("!chs", self.type, self.length, self.name)
+		return struct.pack("!Bhs", self.type, int(self.length), bytes(self.name, 'utf-8'))
 
 		
 
 class UpdateTetrad(Message):
-	type = MessageType.UPDATE_TETRAD
+	type = UPDATE_TETRAD
 	length = 20
 	
 	def setOldPos(self, x, y):
@@ -54,10 +52,10 @@ class UpdateTetrad(Message):
 	def setRotation(self, rot):
 		self.rot = rot
 	def pack(self):
-		return struct.pack("!chiiiii", self.x, self.y, self.x0, self.y0, self.rot)
+		return struct.pack("!Bhiiiii", self.x, self.y, self.x0, self.y0, self.rot)
 
 class UpdateClientState(Message):
-	type = MessageType.UPDATE_CLIENT_STATE
+	type = UPDATE_CLIENT_STATE
 	length = 14
 
 	def setLines(self, lines):
@@ -76,13 +74,13 @@ class UpdateClientState(Message):
 		self.lines_changed = lines_changed
 
 class DisconnectClient(Message):
-	type = MessageType.DISCONNECT_CLIENT
+	type = DISCONNECT_CLIENT
 		
 class KickClient(Message):
-	type = MessageType.KICK_CLIENT
+	type = KICK_CLIENT
 
 class CreateRoom(Message):
-	type = MessageType.CREATE_ROOM
+	type = CREATE_ROOM
 	length = 16
 
 	def setNumPlayers(self, num):
@@ -95,7 +93,7 @@ class CreateRoom(Message):
 		self.name = name
 
 class UserAction(Message):
-	type = MessageType.USER_ACTION
+	type = USER_ACTION
 	length = 8
 
 	def setCmd(self, cmd):
@@ -104,7 +102,7 @@ def main():
 	argv = sys.argv
 	
 	if len(argv) != 3:
-		print "Usage: ./test.py hostname port"
+		print("Usage: ./test.py hostname port")
 		exit(0)
 
 	# Pop the head and ignore
@@ -115,8 +113,8 @@ def main():
 	sock = socket.socket(socket.AF_INET,
 	                     socket.SOCK_DGRAM)
 
-	message = RegisterTetrad()
+	message = RegisterClient()
 
 	message.setName("I am a test client")	
-	sock.sento(message.pack(), (hostname, port))
+	sock.sendto(message.pack(), (hostname, int(port)))
 main()
