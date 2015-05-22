@@ -12,7 +12,8 @@ DISCONNECT_CLIENT = 4
 KICK_CLIENT = 5
 CREATE_ROOM = 6
 USER_ACTION = 7
-NUM_MESSAGES = 8 
+ERROR = 8
+NUM_MESSAGES = 9
 
 
 class Message:
@@ -103,6 +104,19 @@ class UserAction(Message):
 
     def setCmd(self, cmd):
         self.cmd = cmd
+class ErrorMsg(Message):
+    type = ERROR
+    
+    def unpack(self, msg):
+        (type, length, val) = struct.unpack("!BhB", msg)
+
+        self.type = type
+        self.length = length
+        self.val = val
+
+    def __str__(self):
+        return "ERROR: val=%d" % (int(self.val))
+
 def main():
     argv = sys.argv
     
@@ -133,5 +147,10 @@ def main():
             print("Bye!")
             exit(0)
         print("received msg from: %s" % str(addr))
+        if int(data[0]) == ERROR:
+            msg = ErrorMsg()
+            msg.unpack(data)
+            print(msg) 
         sock.sendto(message.pack(), (hostname, int(port)))
-main()
+if __name__=="__main__":
+    main()
