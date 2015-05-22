@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from enum import Enum
 import struct
 import socket
 import sys
@@ -24,9 +23,6 @@ class Message:
 class RegisterTetrad(Message):
     type = REGISTER_TETRAD
 
-    def pack(self):
-        return struct.pack("!Bh", self.type, 0)
-
 class RegisterClient(Message):
     type = REGISTER_CLIENT
     name = "" 
@@ -37,42 +33,51 @@ class RegisterClient(Message):
     def pack(self):
         return struct.pack("!Bhs", self.type, int(self.length), bytes(self.name, 'utf-8'))
 
-        
-
 class UpdateTetrad(Message):
     type = UPDATE_TETRAD
     length = 20
     
-    def setOldPos(self, x, y):
+    def getOldPos(self):
+        return (self.x, self.y)
+
+    def getNewPos(self):
+        return (sekf.x0, self.y0) 
+
+    def getRotation(self, rot):
+        return self.rot
+
+    def unpack(self, msg):
+        (type,length,x,y,x0,y0,rot) = struct.unpack("!Bhiiiii", msg)
+
+        self.type = type
+        self.length = length
+
         self.x = x
         self.y = y
-    def setNewPos(self, x, y):
-        self.x0 = x
-        self.y0 = y
-    def setRotation(self, rot):
+        self.x0 = x0
+        self.y0 = y0
         self.rot = rot
-    def pack(self):
-        return struct.pack("!Bhiiiii", self.x, self.y, self.x0, self.y0, self.rot)
 
 class UpdateClientState(Message):
     type = UPDATE_CLIENT_STATE
     length = 14
 
-    def setLines(self, lines):
-        self.lines = lines
-    
-    def setScore(self, score):
-        self.score = score
+    def getLines(self):
+        return self.lines 
 
-    def setLevel(self, level):
-        self.level = level
+    def getScore(self):
+        return self.score
 
-    def setStatus(self, status):
-        self.status = status
-    
-    def setLinesChanges(self, lines_changed):
-        self.lines_changed = lines_changed
+    def getLevel(self):
+        return self.level
 
+    def getStatus(self):
+        return self.status
+ 
+    def getLinesChanges(self):
+        return self.lines_changed    
+
+        
 class DisconnectClient(Message):
     type = DISCONNECT_CLIENT
         
@@ -127,6 +132,6 @@ def main():
         except KeyboardInterrupt:
             print("Bye!")
             exit(0)
-        print("received msg from: %s" % (addr))
+        print("received msg from: %s" % str(addr))
         sock.sendto(message.pack(), (hostname, int(port)))
 main()
