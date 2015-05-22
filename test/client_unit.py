@@ -17,104 +17,116 @@ NUM_MESSAGES = 8
 
 
 class Message:
-	type = None
-	length = 0
+    type = None
+    length = 0
 
 
 class RegisterTetrad(Message):
-	type = REGISTER_TETRAD
+    type = REGISTER_TETRAD
 
-	def pack(self):
-		return struct.pack("!Bh", self.type, 0)
+    def pack(self):
+        return struct.pack("!Bh", self.type, 0)
 
 class RegisterClient(Message):
-	type = REGISTER_CLIENT
-	name = "" 
+    type = REGISTER_CLIENT
+    name = "" 
 
-	def setName(self, name):
-		self.name = name
-		self.length = self.length + len(name)
-	def pack(self):
-		return struct.pack("!Bhs", self.type, int(self.length), bytes(self.name, 'utf-8'))
+    def setName(self, name):
+        self.name = name
+        self.length = self.length + len(name)
+    def pack(self):
+        return struct.pack("!Bhs", self.type, int(self.length), bytes(self.name, 'utf-8'))
 
-		
+        
 
 class UpdateTetrad(Message):
-	type = UPDATE_TETRAD
-	length = 20
-	
-	def setOldPos(self, x, y):
-		self.x = x
-		self.y = y
-	def setNewPos(self, x, y):
-		self.x0 = x
-		self.y0 = y
-	def setRotation(self, rot):
-		self.rot = rot
-	def pack(self):
-		return struct.pack("!Bhiiiii", self.x, self.y, self.x0, self.y0, self.rot)
+    type = UPDATE_TETRAD
+    length = 20
+    
+    def setOldPos(self, x, y):
+        self.x = x
+        self.y = y
+    def setNewPos(self, x, y):
+        self.x0 = x
+        self.y0 = y
+    def setRotation(self, rot):
+        self.rot = rot
+    def pack(self):
+        return struct.pack("!Bhiiiii", self.x, self.y, self.x0, self.y0, self.rot)
 
 class UpdateClientState(Message):
-	type = UPDATE_CLIENT_STATE
-	length = 14
+    type = UPDATE_CLIENT_STATE
+    length = 14
 
-	def setLines(self, lines):
-		self.lines = lines
-	
-	def setScore(self, score):
-		self.score = score
+    def setLines(self, lines):
+        self.lines = lines
+    
+    def setScore(self, score):
+        self.score = score
 
-	def setLevel(self, level):
-		self.level = level
+    def setLevel(self, level):
+        self.level = level
 
-	def setStatus(self, status):
-		self.status = status
-	
-	def setLinesChanges(self, lines_changed):
-		self.lines_changed = lines_changed
+    def setStatus(self, status):
+        self.status = status
+    
+    def setLinesChanges(self, lines_changed):
+        self.lines_changed = lines_changed
 
 class DisconnectClient(Message):
-	type = DISCONNECT_CLIENT
-		
+    type = DISCONNECT_CLIENT
+        
 class KickClient(Message):
-	type = KICK_CLIENT
+    type = KICK_CLIENT
 
 class CreateRoom(Message):
-	type = CREATE_ROOM
-	length = 16
+    type = CREATE_ROOM
+    length = 16
 
-	def setNumPlayers(self, num):
-		self.numPlayers = num
-	
-	def setNameLen(self, length):
-		self.nameLength = length
+    def setNumPlayers(self, num):
+        self.numPlayers = num
+    
+    def setNameLen(self, length):
+        self.nameLength = length
 
-	def setName(self, name):
-		self.name = name
+    def setName(self, name):
+        self.name = name
 
 class UserAction(Message):
-	type = USER_ACTION
-	length = 8
+    type = USER_ACTION
+    length = 8
 
-	def setCmd(self, cmd):
-		self.cmd = cmd
+    def setCmd(self, cmd):
+        self.cmd = cmd
 def main():
-	argv = sys.argv
-	
-	if len(argv) != 3:
-		print("Usage: ./test.py hostname port")
-		exit(0)
+    argv = sys.argv
+    
+    if len(argv) != 3:
+        print("Usage: ./test.py hostname port")
+        exit(0)
 
-	# Pop the head and ignore
-	argv = argv[1:]
+    # Pop the head and ignore
+    argv = argv[1:]
 
-	hostname, port = argv[0], argv[1]
+    hostname, port = argv[0], argv[1]
 
-	sock = socket.socket(socket.AF_INET,
-	                     socket.SOCK_DGRAM)
+    sock = socket.socket(socket.AF_INET,
+                         socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("",0)) 
+ 
+    message = RegisterClient()
 
-	message = RegisterClient()
+    message.setName("I am a test client")   
+    sock.sendto(message.pack(), (hostname, int(port)))
 
-	message.setName("I am a test client")	
-	sock.sendto(message.pack(), (hostname, int(port)))
+
+    while True:
+        try: 
+            data, addr = sock.recvfrom(1024)
+        except KeyboardInterrupt:
+            print("Bye!")
+            exit(0)
+        print("received msg from: %s" % (addr))
+        sock.sendto(message.pack(), (hostname, int(port)))
 main()
