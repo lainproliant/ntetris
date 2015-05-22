@@ -3,3 +3,4 @@ src/ntetris
 *.out
 *.a
 *.so
+*.dblite
