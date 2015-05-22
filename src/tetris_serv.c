@@ -31,6 +31,51 @@
 
 #define WARN(msg) WARNING("%s", msg);
 
+uv_udp_t g_recv_sock;
+
+typedef struct _request {
+    size_t len;
+    void *payload;
+    const struct sockaddr *from;
+} request;
+
+void handle_msg(uv_work_t *req)
+{
+    /* This function dispatches a request */
+    request *r = req->data;
+    uint8_t rawPacketType = ((uint8_t*)(r->payload))[0];
+    MSG_TYPE packetType = (MSG_TYPE)rawPacketType;
+    printf("sizeof(TLV) = %lu, sizeof(ERRMSG_SIZE) = %lu\n", sizeof(TLV), ERRMSG_SIZE);
+
+    uint8_t errPackBuf[ERRMSG_SIZE];
+    //uint8_t errPackBuf[4];
+
+    switch(packetType) {
+        case REGISTER_TETRAD:
+            printf("Handling REGISTER_TETRAD\n");
+            createErrPacket((TLV*)errPackBuf, UNSUPPORTED_MSG);
+            reply((TLV*)errPackBuf, &g_recv_sock, r->from);
+            break;
+        default:
+            printf("Unhandled packet type!!!!\n");
+            createErrPacket((TLV*)errPackBuf, UNSUPPORTED_MSG);
+            printf("err packet creation successful\n");
+            reply((TLV*)errPackBuf, &g_recv_sock, r->from);
+            break;
+    }
+}
+
+void destroy_msg(uv_work_t *req, int status)
+{
+    request *r = req->data;
+    free(r->payload);
+    free(r);
+
+    if(status) {
+        fprintf(stderr, "Error: %s\n", uv_err_name(status));
+    }
+}
+
 void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
             const struct sockaddr *addr, unsigned flags)
 {
@@ -51,7 +96,16 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
 
     char senderIP[20] = { 0 };
     uv_ip4_name((const struct sockaddr_in*)addr, senderIP, 19);
-    fprintf(stderr, "Received %s : from %s\n", buf->base, senderIP);
+
+    uv_work_t *work = (uv_work_t*)malloc(sizeof(uv_work_t));
+
+    request *theReq = (request*)malloc(sizeof(request));
+    theReq->payload = buf->base;
+    theReq->len = nread;
+    theReq->from = addr;
+
+    work->data = theReq;
+    uv_queue_work(uv_default_loop(), work, handle_msg, destroy_msg);
 }
 
 static void malloc_cb(uv_handle_t *h, size_t s, uv_buf_t *b)
@@ -83,13 +137,12 @@ int main(int argc, char *argv[])
     }
 
     uv_loop_t *loop = uv_default_loop();
-    uv_udp_t recv_sock;
-    uv_udp_init(loop, &recv_sock); 
+    uv_udp_init(loop, &g_recv_sock); 
     struct sockaddr_in recaddr;
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
-    uv_udp_bind(&recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);
-    uv_udp_recv_start(&recv_sock, malloc_cb, onrecv);
+    uv_udp_bind(&g_recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);
+    uv_udp_recv_start(&g_recv_sock, malloc_cb, onrecv);
 
     return uv_run(loop, UV_RUN_DEFAULT);
 }
