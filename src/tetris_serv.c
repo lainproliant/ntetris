@@ -14,22 +14,9 @@
 #include <limits.h>
 #include <uv.h>
 #include "packet.h"
+#include "macros.h"
 
 #define DEFAULT_PORT 48879
-
-#define ERROR(fmt, ...) \
-        do { fprintf(stderr, "%s:%d:%s(): " fmt "\n", __FILE__, \
-                     __LINE__, __func__, ##__VA_ARGS__); exit(-1); \
-        } while (0)
-
-#define ERR(msg) ERROR("%s", msg);
-
-#define WARNING(fmt, ...) \
-        do { fprintf(stderr, "%s:%d:%s(): " fmt "\n", __FILE__, \
-                     __LINE__, __func__, ##__VA_ARGS__); \
-        } while (0)
-
-#define WARN(msg) WARNING("%s", msg);
 
 uv_udp_t g_recv_sock;
 
@@ -44,23 +31,29 @@ void handle_msg(uv_work_t *req)
     /* This function dispatches a request */
     request *r = req->data;
     uint8_t rawPacketType = ((uint8_t*)(r->payload))[0];
-    MSG_TYPE packetType = (MSG_TYPE)rawPacketType;
-    printf("sizeof(TLV) = %lu, sizeof(ERRMSG_SIZE) = %lu\n", sizeof(TLV), ERRMSG_SIZE);
 
-    uint8_t errPackBuf[ERRMSG_SIZE];
-    //uint8_t errPackBuf[4];
+    /* Create a blank errPkt, populate later with 
+     * createErrPacket */
+    MSG_TYPE packetType = (MSG_TYPE)rawPacketType;
+    msg_err errMsg;
+
+    /* Stack allocated buffer for the error message packet */
+    uint8_t errPktBuf[ERRMSG_SIZE];
+    packet_t *errPkt = &errPktBuf;
+
+    size_t errbytes = pack_msg_err(&errMsg, &errPkt);
 
     switch(packetType) {
         case REGISTER_TETRAD:
             printf("Handling REGISTER_TETRAD\n");
-            createErrPacket((TLV*)errPackBuf, UNSUPPORTED_MSG);
-            reply((TLV*)errPackBuf, &g_recv_sock, r->from);
+            createErrPacket(errPkt, UNSUPPORTED_MSG);
+            reply(errPkt, errbytes, &g_recv_sock, r->from);
+            free(errPkt);
             break;
         default:
-            printf("Unhandled packet type!!!!\n");
-            createErrPacket((TLV*)errPackBuf, UNSUPPORTED_MSG);
-            printf("err packet creation successful\n");
-            reply((TLV*)errPackBuf, &g_recv_sock, r->from);
+            WARN("Unhandled packet type!!!!\n");
+            createErrPacket(errPkt, UNSUPPORTED_MSG);
+            reply(errPkt, errbytes, &g_recv_sock, r->from);
             break;
     }
 }
@@ -72,7 +65,7 @@ void destroy_msg(uv_work_t *req, int status)
     free(r);
 
     if(status) {
-        fprintf(stderr, "Error: %s\n", uv_err_name(status));
+        WARNING("WARNING: %s\n", uv_err_name(status));
     }
 }
 
