@@ -10,12 +10,12 @@ BEGIN
 
 }
 
-pid$target:a.out:onrecv:entry
+pid$target:a.out:handle_msg:entry
 {
     self->ts = timestamp;
 }
 
-pid$target:a.out:onrecv:return
+pid$target:a.out:handle_msg:return
 {
     @counts[cpu] = count();
     @svc_time[cpu] = quantize(timestamp - self->ts);
