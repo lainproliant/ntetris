@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <strings.h>
 
 #ifdef __sun
 #include "strtonum.h"
@@ -13,17 +14,21 @@
 
 #include <limits.h>
 #include <uv.h>
+#include <pthread.h>
 #include "packet.h"
 #include "macros.h"
 
 #define DEFAULT_PORT 48879
 
 uv_udp_t g_recv_sock;
+uv_udp_t g_send_sock;
+
+static int vanillaSock;
 
 typedef struct _request {
     size_t len;
     void *payload;
-    const struct sockaddr *from;
+    struct sockaddr from;
 } request;
 
 void handle_msg(uv_work_t *req)
@@ -47,13 +52,12 @@ void handle_msg(uv_work_t *req)
         case REGISTER_TETRAD:
             printf("Handling REGISTER_TETRAD\n");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
-            reply(errPkt, errbytes, &g_recv_sock, r->from);
-            free(errPkt);
+            reply(errPkt, errbytes, &g_send_sock, &r->from, vanillaSock);
             break;
         default:
             WARN("Unhandled packet type!!!!\n");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
-            reply(errPkt, errbytes, &g_recv_sock, r->from);
+            reply(errPkt, errbytes, &g_send_sock, &r->from, vanillaSock);
             break;
     }
 }
@@ -89,13 +93,17 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
 
     char senderIP[20] = { 0 };
     uv_ip4_name((const struct sockaddr_in*)addr, senderIP, 19);
+    in_port_t port = ((const struct sockaddr_in*)addr)->sin_port;
+    fprintf(stderr, "Received msg over %s:%d\n", senderIP, port);
 
     uv_work_t *work = (uv_work_t*)malloc(sizeof(uv_work_t));
 
-    request *theReq = (request*)malloc(sizeof(request));
+    request *theReq = malloc(sizeof(request));
     theReq->payload = buf->base;
+    //memcpy(theReq->payload, buf->base, nread);
+    //free(buf->base);
     theReq->len = nread;
-    theReq->from = addr;
+    theReq->from = *addr;
 
     work->data = theReq;
     uv_queue_work(uv_default_loop(), work, handle_msg, destroy_msg);
@@ -129,13 +137,23 @@ int main(int argc, char *argv[])
        }
     }
 
+    /* There were many possible approaches to take to deal with the lack
+     * of thread safety in libuv's uv_udp_send() functions.  These include
+     * async_send, multiple outbound sockets on a per thread basis,
+     * constructing a raw socket based send call, or constructing a send
+     * queue of messages when the worker thread has completed.  For now
+     * we'll try the raw socket approach */
+
     uv_loop_t *loop = uv_default_loop();
-    uv_udp_init(loop, &g_recv_sock); 
+    uv_udp_init(loop, &g_recv_sock);
+    //uv_udp_init(loop, &g_send_sock);
     struct sockaddr_in recaddr;
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
     uv_udp_bind(&g_recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);
     uv_udp_recv_start(&g_recv_sock, malloc_cb, onrecv);
+
+    vanillaSock = socket(AF_INET, SOCK_DGRAM, 0);
 
     return uv_run(loop, UV_RUN_DEFAULT);
 }

@@ -1,7 +1,9 @@
 #include "packet.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "macros.h"
+#include <sys/socket.h>
 
 void createErrPacket(packet_t *ret, ERR_CODE e)
 {
@@ -20,12 +22,15 @@ void onsend(uv_udp_send_t *req, int status)
     }
 }
 
-void reply(packet_t *p, size_t psize, uv_udp_t *req, const struct sockaddr *from)
+void reply(packet_t *p, size_t psize, uv_udp_t *req, const struct sockaddr *from, int sock)
 {
-    fprintf(stderr, "in reply function\n");
+    /*fprintf(stderr, "in reply function\n");
     uv_udp_send_t *send_req = malloc(sizeof(uv_udp_send_t));
     uv_buf_t reply = uv_buf_init((char*)p, psize);
-    uv_udp_send(send_req, req, &reply, 1, from, onsend);
+    uv_udp_send(send_req, req, &reply, 1, from, onsend);*/
+    if(sendto(sock, p, psize, NULL, from, sizeof(struct sockaddr)) < 0) {
+        WARNING("Something went wrong in the reply: %s\n", strerror(errno));
+    }
 }
 
 size_t pack_msg_err(msg_err *m, packet_t **buf)
