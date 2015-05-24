@@ -55,7 +55,7 @@ void handle_msg(uv_work_t *req)
             reply(errPkt, errbytes, &g_send_sock, &r->from, vanillaSock);
             break;
         default:
-            WARN("Unhandled packet type!!!!\n");
+            //WARN("Unhandled packet type!!!!\n");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
             reply(errPkt, errbytes, &g_send_sock, &r->from, vanillaSock);
             break;
@@ -95,7 +95,7 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
     char senderIP[20] = { 0 };
     uv_ip4_name((const struct sockaddr_in*)addr, senderIP, 19);
     in_port_t port = ((const struct sockaddr_in*)addr)->sin_port;
-    fprintf(stderr, "Received msg over %s:%d\n", senderIP, port);
+    //fprintf(stderr, "Received msg over %s:%d\n", senderIP, port);
 
     uv_work_t *work = (uv_work_t*)malloc(sizeof(uv_work_t));
 

@@ -13,7 +13,7 @@ void createErrPacket(packet_t *ret, ERR_CODE e)
 
 void onsend(uv_udp_send_t *req, int status)
 {
-    fprintf(stderr, "in reply callback\n");
+    //fprintf(stderr, "in reply callback\n");
     if (status != 0) {
         WARNING("WARNING: %s\n", uv_err_name(status));
     } else {
