@@ -67,6 +67,7 @@ void destroy_msg(uv_work_t *req, int status)
     request *r = req->data;
     free(r->payload);
     free(r);
+    free(req);
 
     if(status) {
         WARNING("WARNING: %s\n", uv_err_name(status));

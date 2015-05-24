@@ -29,7 +29,7 @@ void reply(packet_t *p, size_t psize, uv_udp_t *req, const struct sockaddr *from
     uv_buf_t reply = uv_buf_init((char*)p, psize);
     uv_udp_send(send_req, req, &reply, 1, from, onsend);*/
     if(sendto(sock, p, psize, NULL, from, sizeof(struct sockaddr)) < 0) {
-        WARNING("Something went wrong in the reply: %s\n", strerror(errno));
+        WARNING("WARNING: something went wrong in the reply - %s\n", strerror(errno));
     }
 }
 
