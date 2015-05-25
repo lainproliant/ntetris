@@ -25,6 +25,7 @@ typedef enum _USER_CMD {
 
 typedef enum _ERROR_CODE {
    UNSUPPORTED_MSG = 1,
+   ILLEGAL_MSG = 2,
    NUM_ERR_CODES
 } ERR_CODE;
 

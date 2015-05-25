@@ -51,7 +51,7 @@ void handle_msg(uv_work_t *req)
     switch(packetType) {
         case REGISTER_TETRAD:
             printf("Handling REGISTER_TETRAD\n");
-            createErrPacket(errPkt, UNSUPPORTED_MSG);
+            createErrPacket(errPkt, ILLEGAL_MSG);
             reply(errPkt, errbytes, &g_send_sock, &r->from, vanillaSock);
             break;
         default:
