@@ -162,7 +162,7 @@ msg_register_client unpack_msg_register_client(packet_t *buf)
 
     /* This may require allocations or copies, not quite sure,
      * test & revisit */
-    m.name = (unsigned char[])alloca(m.nameLength);
+    m.name = alloca(m.nameLength);
     memcpy(m.name, &(buf->data[1]), m.nameLength);
     //m.name = (uint8_t[])(&(buf->data[1]));
 
@@ -191,7 +191,7 @@ msg_update_client_state unpack_msg_update_client(packet_t *buf)
      * be freed at the end of the work_cb, the elements
      * for it still need to be individually byte swapped
      * for non-network byte ordered architectures */
-    m.changedLines = (uint16_t*)alloca(m.nLinesChanged * sizeof(uint16_t));
+    m.changedLines = alloca(m.nLinesChanged * sizeof(uint16_t));
     size_t ptrOffset = 3*sizeof(int) + 2;
 
     memcpy(m.changedLines, &buf->data[ptrOffset], \

@@ -46,7 +46,8 @@ typedef struct _msg_register_tetrad {
 
 typedef struct _msg_register_client {
     uint8_t nameLength;
-    unsigned char name[];
+    //unsigned char name[];
+    unsigned char *name;
 } msg_register_client;
 
 typedef struct _msg_update_tetrad {
@@ -61,13 +62,15 @@ typedef struct _msg_update_client_state {
     int level;
     uint8_t status; 
     uint8_t nLinesChanged;
-    uint16_t changedLines[];
+    //uint16_t changedLines[];
+    uint16_t *changedLines;
 } msg_update_client_state;
 
 typedef struct _msg_create_room {
     uint8_t numPlayers;
     uint8_t roomNameLen;
-    unsigned char roomName[];
+    //unsigned char roomName[];
+    unsigned char *roomName;
 } msg_create_room;
 
 typedef struct _msg_user_action {
