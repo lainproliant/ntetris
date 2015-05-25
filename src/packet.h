@@ -102,7 +102,7 @@ msg_create_room unpack_msg_create_room(packet_t *buf);
 msg_user_action unpack_msg_user_action(packet_t *buf);
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
-void reply(packet_t *p, size_t psize, uv_udp_t *req, const struct sockaddr *from, int sock);
+void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

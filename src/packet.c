@@ -23,7 +23,7 @@ void onsend(uv_udp_send_t *req, int status)
     }
 }
 
-void reply(packet_t *p, size_t psize, uv_udp_t *req, const struct sockaddr *from, int sock)
+void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock)
 {
     /*fprintf(stderr, "in reply function\n");
     uv_udp_send_t *send_req = malloc(sizeof(uv_udp_send_t));
@@ -86,7 +86,7 @@ size_t pack_msg_update_client(msg_update_client_state *m, packet_t **buf)
     (*buf)->data[3*sizeof(int) + 1] = m->nLinesChanged;
 
     for (size_t i = 0; i < m->nLinesChanged; ++i) {
-        memcpy(&((*buf)->data[3*sizeof(int) + 2]), \
+        memcpy(&((*buf)->data[3*sizeof(int) + 2 + i*sizeof(uint16_t)]), \
                &htons(m->changedLines[i]), sizeof(uint16_t));
     }
 
@@ -95,7 +95,7 @@ size_t pack_msg_update_client(msg_update_client_state *m, packet_t **buf)
 
 size_t pack_msg_update_tetrad(msg_update_tetrad *m, packet_t **buf)
 {
-    size_t packedSize = 5 * sizeof(int);
+    size_t packedSize = 5 * sizeof(int) + sizeof(uint8_t);
 
     if (*buf == NULL) {
         *buf = malloc(packedSize);
