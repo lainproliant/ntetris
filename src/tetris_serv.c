@@ -46,13 +46,11 @@ void handle_msg(uv_work_t *req)
     uint8_t errPktBuf[ERRMSG_SIZE];
     packet_t *errPkt = &errPktBuf;
 
-    size_t errbytes = pack_msg_err(&errMsg, &errPkt);
-
     switch(packetType) {
         case REGISTER_TETRAD:
             printf("Handling REGISTER_TETRAD\n");
             createErrPacket(errPkt, ILLEGAL_MSG);
-            reply(errPkt, errbytes, &r->from, vanillaSock);
+            reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             break;
 
         //case REGISTER_CLIENT:
@@ -61,7 +59,7 @@ void handle_msg(uv_work_t *req)
         default:
             //WARN("Unhandled packet type!!!!\n");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
-            reply(errPkt, errbytes, &r->from, vanillaSock);
+            reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             break;
     }
 }
