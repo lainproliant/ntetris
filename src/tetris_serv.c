@@ -81,6 +81,10 @@ void handle_msg(uv_work_t *req)
 
     switch(packetType) {
         case REGISTER_TETRAD:
+        case ERR_PACKET:
+        case KICK_CLIENT:
+        case UPDATE_CLIENT_STATE:
+        case REG_ACK:
             createErrPacket(errPkt, ILLEGAL_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             break;
