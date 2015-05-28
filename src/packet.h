@@ -6,15 +6,15 @@
 #include <stdbool.h>
 
 typedef enum _MSG_TYPE {
-    REGISTER_TETRAD,
-    REGISTER_CLIENT,
-    UPDATE_TETRAD,
-    UPDATE_CLIENT_STATE,
-    DISCONNECT_CLIENT,
-    KICK_CLIENT,
-    CREATE_ROOM,
-    USER_ACTION,
-    ERR_PACKET,
+    REGISTER_TETRAD, /* A new tetrad is in play */
+    REGISTER_CLIENT, /* A new client has joined the server */
+    UPDATE_TETRAD, /* The server updated a tetrad position */
+    UPDATE_CLIENT_STATE, /* The server updated client stats & screen */
+    DISCONNECT_CLIENT, /* The client disconnected from the server */
+    KICK_CLIENT, /* The client was kicked from the server */
+    CREATE_ROOM, /* A new game is created, with up to 4 boards */
+    USER_ACTION, /* A client is sending an action to be parsed */
+    ERR_PACKET, /* There was an error parsing the client's packet */
     NUM_MESSAGES
 } MSG_TYPE;
 
@@ -93,33 +93,10 @@ typedef struct _msg_user_action {
 } msg_user_action;
 #pragma pop
 
-/* Packer functions which build raw byte streams of minimal
- * packed size, if buf == NULL, function performs allocation.
- * this is useful if the user wants to allocate something
- * with a stack variable.  This also performs the neccessary
- * byte swapping for the client/server. Returns back the 
- * size of the allocated byte stream */
-/*size_t pack_msg_err(msg_err *m, packet_t **buf);
-size_t pack_msg_register_client(msg_register_client *m, packet_t **buf);
-size_t pack_msg_update_client(msg_update_client_state *m, packet_t **buf);
-size_t pack_msg_update_tetrad(msg_update_tetrad *m, packet_t **buf);
-size_t pack_msg_create_room(msg_create_room *m, packet_t **buf);
-size_t pack_user_action(msg_user_action *m, packet_t **buf);*/
-
-/* Unpacker functions which take raw byte streams pulled
- * from packets and translate them to the correct endianess
- * and padded struct size for the given architecture */
-/*msg_err unpack_msg_err(packet_t *buf);
-msg_register_tetrad unpack_register_tetrad(packet_t *buf);
-msg_register_client unpack_msg_register_client(packet_t *buf);
-msg_update_client_state unpack_msg_update_client(packet_t *buf);
-msg_update_tetrad unpack_msg_update_tetrad(packet_t *buf);
-msg_create_room unpack_msg_create_room(packet_t *buf);
-msg_user_action unpack_msg_user_action(packet_t *buf);*/
-
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
 
+/* This is meant to be used by both client & server */
 bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t);
 
 /* These are the base sizes of each type, without the variable components 
