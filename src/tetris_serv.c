@@ -26,7 +26,7 @@ uv_udp_t g_send_sock;
 static int vanillaSock;
 
 typedef struct _request {
-    size_t len;
+    ssize_t len;
     void *payload;
     struct sockaddr from;
 } request;
@@ -46,18 +46,27 @@ void handle_msg(uv_work_t *req)
     uint8_t errPktBuf[ERRMSG_SIZE];
     packet_t *errPkt = &errPktBuf;
 
+    /* Validate lengths */
+    if(!validateLength((packet_t*)r->payload, r->len, packetType)) {
+        WARN("Incorrect/unexpected packet length\n");
+        createErrPacket(errPkt, BAD_LEN);
+        reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+        return;
+    }
+
     switch(packetType) {
         case REGISTER_TETRAD:
-            printf("Handling REGISTER_TETRAD\n");
             createErrPacket(errPkt, ILLEGAL_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             break;
 
-        //case REGISTER_CLIENT:
-        //    break;
+        case REGISTER_CLIENT:
+            createErrPacket(errPkt, SUCCESS);
+            reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            break;
 
         default:
-            //WARN("Unhandled packet type!!!!\n");
+            WARN("Unhandled packet type!!!!\n");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             break;

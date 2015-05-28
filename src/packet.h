@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <uv.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 typedef enum _MSG_TYPE {
     REGISTER_TETRAD,
@@ -24,8 +25,10 @@ typedef enum _USER_CMD {
 } USER_CMD;
 
 typedef enum _ERROR_CODE {
-   UNSUPPORTED_MSG = 1,
-   ILLEGAL_MSG = 2,
+   UNSUPPORTED_MSG = 1, /* Message with unknown type */
+   ILLEGAL_MSG = 2, /* Illegal message sent to server */
+   BAD_LEN = 3, /* Invalid packet length */
+   SUCCESS = 4, /* Just here for debugging the replies, will remove */
    NUM_ERR_CODES
 } ERR_CODE;
 
@@ -116,6 +119,8 @@ msg_user_action unpack_msg_user_action(packet_t *buf);*/
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
+
+bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */
