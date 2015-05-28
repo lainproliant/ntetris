@@ -23,7 +23,6 @@ void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock)
 bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 {
     /* C dictates this be done outside of switch control block */
-    uint8_t numLinesChanged;
     msg_update_client_state *upClient = NULL;
     msg_create_room *croom = NULL;
     msg_register_client *rclient = NULL;
