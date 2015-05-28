@@ -3,6 +3,7 @@
 import struct
 import socket
 import sys
+import time
 
 REGISTER_TETRAD = 0 
 REGISTER_CLIENT = 1
@@ -13,7 +14,8 @@ KICK_CLIENT = 5
 CREATE_ROOM = 6
 USER_ACTION = 7
 ERROR = 8
-NUM_MESSAGES = 9
+REG_ACK = 9
+NUM_MESSAGES = 10
 
 
 class Message:
@@ -61,6 +63,19 @@ class UpdateTetrad(Message):
     def __str__(self):
         return "UPDATE_TETRAD: val=(%d,%d,%d,%d,%d)" % \
             (self.x, self.y, self.x0, self.y0, self.rot)
+
+class RegAck(Message):
+    type = REG_ACK
+    
+    def getUid():
+        return self.uid
+
+    def unpack(self, msg):
+        (self.type,self.uid) = struct.unpack("!BI", msg)
+
+    def __str__(self):
+        return "REG_ACK: val=%d" % (self.uid)
+
 
 class UpdateClientState(Message):
     type = UPDATE_CLIENT_STATE
@@ -151,12 +166,15 @@ def main():
     message = RegisterClient()
 
     message.setName("I am a test client")   
+    #start = time.time()
     sock.sendto(message.pack(), (hostname, int(port)))
 
 
     while True:
         try: 
             data, addr = sock.recvfrom(1024)
+            #totTime = time.time() - start
+            #print('took %lf ms' % (totTime*1000.0,))
         except KeyboardInterrupt:
             print("Bye!")
             exit(0)
@@ -173,7 +191,16 @@ def main():
             msg = UpdateClientState()
             msg.unpack(data)
             print(msg)
+        elif int(data[0]) == REG_ACK:
+            msg = RegAck()
+            msg.unpack(data)
+            print(msg)
+        else:
+            print('unrecognized pkt type')
+            print('len(data) = %lu' % (len(data),))
+            print(data)
             
+        #start = time.time()
         sock.sendto(message.pack(), (hostname, int(port)))
 if __name__=="__main__":
     main()
