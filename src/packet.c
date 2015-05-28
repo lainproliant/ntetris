@@ -56,7 +56,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             croom = (msg_create_room*)p->data;
             totalBytes += sizeof(msg_create_room) + \
-                croom->roomNameLen * sizeof(unsigned char);
+                croom->roomNameLen * sizeof(char);
             break;
         case REGISTER_CLIENT:
             if (len < sizeof(msg_register_client)) {
@@ -65,7 +65,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             rclient = (msg_register_client*)p->data;
             totalBytes += sizeof(msg_register_client) + \
-                rclient->nameLength * sizeof(unsigned char);
+                rclient->nameLength * sizeof(char);
             break;
         default:
             WARNING("WARNING: unhandled type passed in (%d)\n", t);

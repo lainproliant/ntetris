@@ -17,7 +17,7 @@ if 'linux' in sys.platform:
   liblist.append('bsd')
 
 if 'sunos' in sys.platform:
-  cflags = ' '.join((cflags, '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s'))
+  cflags = ' '.join((cflags, '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s', '-xO5'))
   ntetris_cfiles.append('strtonum.c')
   ntetris_srv_files.append('strtonum.c')
   srvliblist.append('socket')

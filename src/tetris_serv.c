@@ -25,6 +25,24 @@ uv_udp_t g_send_sock;
 
 static int vanillaSock;
 
+/* This will be the source of randomness, in solaris /dev/urandom
+ * is non-blocking but under the hood should use KCF for secure
+ * random numbers.  This may not be the case for other platforms,
+ * I may toy around with using the entropy values from the random
+ * pools provided by these files as a seed to better generators.
+ * Honestly this doesn't need to be cryptographically secure, just
+ * varied enough and not ridiculously predictable */
+FILE *randFile = NULL;
+
+/* This function does necessitate a syscall, so perhaps we should
+only call this to a faster PRNG after so many calls */
+uint32_t getRand()
+{
+    uint32_t retVal = 0;
+    fread(&retVal, sizeof(uint32_t), 1, randFile);
+    return retVal;
+}
+
 typedef struct _request {
     ssize_t len;
     void *payload;
@@ -35,18 +53,21 @@ void handle_msg(uv_work_t *req)
 {
     /* This function dispatches a request */
     request *r = req->data;
-    uint8_t rawPacketType = ((uint8_t*)(r->payload))[0];
+    packet_t *pkt = r->payload;
 
     /* Create a blank errPkt, populate later with 
      * createErrPacket */
-    MSG_TYPE packetType = (MSG_TYPE)rawPacketType;
+    MSG_TYPE packetType = (MSG_TYPE)pkt->type;
     msg_err errMsg;
     msg_register_client *rclient = NULL;
     char *clientName = NULL;
+    msg_reg_ack m;
 
     /* Stack allocated buffer for the error message packet */
     uint8_t errPktBuf[ERRMSG_SIZE];
-    packet_t *errPkt = &errPktBuf;
+    uint8_t ackPackBuf[sizeof(packet_t) + sizeof(msg_reg_ack)];
+    packet_t *errPkt = errPktBuf;
+    packet_t *ackPack = ackPackBuf;
     ssize_t ePktSize = -1;
 
     /* Validate lengths */
@@ -65,15 +86,20 @@ void handle_msg(uv_work_t *req)
             break;
 
         case REGISTER_CLIENT:
-            rclient = (msg_register_client*)(((char*)r->payload) + 1);
+            rclient = (msg_register_client*)(pkt->data);
 
             /* This won't be NULL terminated */
             clientName = malloc(rclient->nameLength + 1);
             strlcpy(clientName, rclient->name, rclient->nameLength + 1);
 
+            /* Do something with this information, haven't written this
+             * function just yet */ 
+            // m = register_client(clientName, r->from);
+            m.curPlayerId = htonl(getRand());
+            ackPack->type = REG_ACK;
+            memcpy(ackPack->data, &m, sizeof(msg_reg_ack));
             printf("Registering client %s\n", clientName);
-            createErrPacket(errPkt, SUCCESS);
-            reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            reply(ackPack, sizeof(ackPackBuf), &r->from, vanillaSock);
             free(clientName);
             break;
 
@@ -146,19 +172,27 @@ int main(int argc, char *argv[])
     int port = DEFAULT_PORT;
     const char *err_str = NULL;
 
+
     static struct option longopts[] = {
         {"port",      required_argument,     NULL,     'p'},
+        {"random",      required_argument,     NULL,     'r'},
         {NULL,        0,                     NULL,     0}
     };
 
-    while ((go_ret = getopt_long(argc, argv, "p:", longopts, NULL)) != -1) {
+    while ((go_ret = getopt_long(argc, argv, "p:r:", longopts, NULL)) != -1) {
        switch (go_ret) {
             case 'p':
                 port = strtonum(optarg, 1, UINT16_MAX, &err_str);
                 if (err_str) {
                     ERR("Bad value for port");
                 }
+            case 'r':
+                randFile = fopen(optarg, "r");
        }
+    }
+
+    if (!randFile) {
+        randFile = fopen("/dev/urandom", "r");
     }
 
     /* There were many possible approaches to take to deal with the lack

@@ -15,8 +15,15 @@ typedef enum _MSG_TYPE {
     CREATE_ROOM, /* A new game is created, with up to 4 boards */
     USER_ACTION, /* A client is sending an action to be parsed */
     ERR_PACKET, /* There was an error parsing the client's packet */
+    REG_ACK, /* Client registration acknowledgement */
     NUM_MESSAGES
 } MSG_TYPE;
+
+typedef enum _KICK_STATUS {
+    KICKED,
+    BANNED,
+    NUM_KICK_STATUSES
+} KICK_STATUS;
 
 typedef enum _USER_CMD {
    ROTCW = 0,
@@ -88,9 +95,22 @@ typedef struct _msg_create_room {
 #pragma pop
 
 #pragma pack(1)
+typedef struct _msg_reg_ack {
+    uint32_t curPlayerId;
+} msg_reg_ack;
+#pragma pop
+
+#pragma pack(1)
 typedef struct _msg_user_action {
     uint8_t cmd;
 } msg_user_action;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_kick_client {
+    uint8_t kickStatus;
+    char reason[];
+} msg_kick_client;
 #pragma pop
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
