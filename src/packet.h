@@ -56,7 +56,7 @@ typedef struct _msg_register_tetrad {
 #pragma pack(1)
 typedef struct _msg_register_client {
     uint8_t nameLength;
-    unsigned char name[];
+    char name[];
 } msg_register_client;
 #pragma pop
 
@@ -83,7 +83,7 @@ typedef struct _msg_update_client_state {
 typedef struct _msg_create_room {
     uint8_t numPlayers;
     uint8_t roomNameLen;
-    unsigned char roomName[];
+    char roomName[];
 } msg_create_room;
 #pragma pop
 
@@ -97,7 +97,7 @@ void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
 
 /* This is meant to be used by both client & server */
-bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t);
+bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

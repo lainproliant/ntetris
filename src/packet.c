@@ -19,24 +19,25 @@ void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock)
     }
 }
 
-bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t)
+/* If this function doesn't modify expectedSize, assume malformed packet */
+bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 {
     /* C dictates this be done outside of switch control block */
     uint8_t numLinesChanged;
     msg_update_client_state *upClient = NULL;
     msg_create_room *croom = NULL;
     msg_register_client *rclient = NULL;
-    size_t totalBytes = sizeof(packet_t);
+    ssize_t totalBytes = sizeof(packet_t);
 
     switch(t) {
         case REGISTER_TETRAD:
-            return (len == (sizeof(packet_t) + sizeof(msg_register_tetrad)));
+            totalBytes += sizeof(msg_register_tetrad);
             break;
         case UPDATE_TETRAD:
-            return (len == (sizeof(packet_t) + sizeof(msg_update_tetrad)));
+            totalBytes += sizeof(msg_update_tetrad);
             break;
         case USER_ACTION:
-            return (len == (sizeof(packet_t) + sizeof(msg_user_action)));
+            totalBytes += sizeof(msg_user_action);
             break;
 
         /* Handling of variable length fields */
@@ -48,7 +49,6 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t)
             upClient = (msg_update_client_state*)p->data;
             totalBytes += sizeof(msg_update_client_state) + \
                 upClient->nLinesChanged * sizeof(uint16_t); 
-            return (len == totalBytes);
             break;
         case CREATE_ROOM:
             if (len < sizeof(msg_create_room)) {
@@ -57,8 +57,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t)
 
             croom = (msg_create_room*)p->data;
             totalBytes += sizeof(msg_create_room) + \
-                croom->roomNameLen * sizeof(unsigned char); 
-            return (len == totalBytes);
+                croom->roomNameLen * sizeof(unsigned char);
             break;
         case REGISTER_CLIENT:
             if (len < sizeof(msg_register_client)) {
@@ -68,11 +67,12 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t)
             rclient = (msg_register_client*)p->data;
             totalBytes += sizeof(msg_register_client) + \
                 rclient->nameLength * sizeof(unsigned char);
-            return (len == totalBytes);
             break;
         default:
             WARNING("WARNING: unhandled type passed in (%d)\n", t);
             return false;
             break;
     }
+            *expectedSize = totalBytes;
+            return (len == totalBytes);
 }

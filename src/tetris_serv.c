@@ -41,14 +41,18 @@ void handle_msg(uv_work_t *req)
      * createErrPacket */
     MSG_TYPE packetType = (MSG_TYPE)rawPacketType;
     msg_err errMsg;
+    msg_register_client *rclient = NULL;
+    char *clientName = NULL;
 
     /* Stack allocated buffer for the error message packet */
     uint8_t errPktBuf[ERRMSG_SIZE];
     packet_t *errPkt = &errPktBuf;
+    ssize_t ePktSize = -1;
 
     /* Validate lengths */
-    if(!validateLength((packet_t*)r->payload, r->len, packetType)) {
-        WARN("Incorrect/unexpected packet length\n");
+    if(!validateLength((packet_t*)r->payload, r->len, packetType, &ePktSize)) {
+        WARNING("Incorrect/unexpected packet length\n"
+                "Expected %zd bytes, got %zd bytes\n", ePktSize, r->len);
         createErrPacket(errPkt, BAD_LEN);
         reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
         return;
@@ -61,8 +65,16 @@ void handle_msg(uv_work_t *req)
             break;
 
         case REGISTER_CLIENT:
+            rclient = (msg_register_client*)(((char*)r->payload) + 1);
+
+            /* This won't be NULL terminated */
+            clientName = malloc(rclient->nameLength + 1);
+            strlcpy(clientName, rclient->name, rclient->nameLength + 1);
+
+            printf("Registering client %s\n", clientName);
             createErrPacket(errPkt, SUCCESS);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            free(clientName);
             break;
 
         default:
