@@ -30,9 +30,9 @@ class RegisterClient(Message):
 
     def setName(self, name):
         self.name = name
-        self.length = self.length + len(name)
+        self.length = len(name)
     def pack(self):
-        return struct.pack("!Bhs", self.type, int(self.length), bytes(self.name, 'utf-8'))
+        return struct.pack("!BB%ds" % (self.length,), self.type, int(self.length), bytes(self.name, 'utf-8'))
 
 class UpdateTetrad(Message):
     type = UPDATE_TETRAD
