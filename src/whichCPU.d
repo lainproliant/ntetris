@@ -12,13 +12,13 @@ BEGIN
 
 pid$target:a.out:handle_msg:entry
 {
-    self->ts = timestamp;
+    self->ts = vtimestamp;
 }
 
 pid$target:a.out:handle_msg:return
 {
     @counts[cpu] = count();
-    @svc_time[cpu] = quantize(timestamp - self->ts);
+    @svc_time[cpu] = quantize(vtimestamp - self->ts);
 }
 
 profile:::tick-1m
