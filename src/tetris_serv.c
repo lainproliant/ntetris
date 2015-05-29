@@ -4,12 +4,14 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <strings.h>
+#include <string.h>
 
 #ifdef __sun
 #include "strtonum.h"
 #include <mtmalloc.h>
-#else
-#include <strtonum.h>
+#elif defined(__linux__)
+#include <bsd/stdlib.h>
+#include <bsd/string.h>
 #endif
 
 #include <limits.h>
