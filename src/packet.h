@@ -28,7 +28,8 @@ typedef enum _KICK_STATUS {
 typedef enum _USER_CMD {
    ROTCW = 0,
    ROTCCW = 1,
-   LOWER = 2
+   LOWER = 2,
+   NUM_CMDS
 } USER_CMD;
 
 typedef enum _ERROR_CODE {
@@ -55,8 +56,9 @@ typedef struct _msg_err {
 #pragma pop
 
 #pragma pack(1)
+/* This message indicates the next tetrad(s) queued to drop */
 typedef struct _msg_register_tetrad {
-    int blah;
+    uint8_t shape; /* All other fields are initialized the same */
 } msg_register_tetrad;
 #pragma pop
 
@@ -77,12 +79,12 @@ typedef struct _msg_update_tetrad {
 
 #pragma pack(1)
 typedef struct _msg_update_client_state {
-    int nlines;
-    int score;
-    int level;
-    uint8_t status; 
-    uint8_t nLinesChanged;
-    uint16_t changedLines[];
+    int nlines; /* The number of lines cleared by the player */
+    int score; /* The current score of the player */
+    int level; /* The current difficulty level for the player */
+    uint8_t status; /* the current game status */
+    uint8_t nLinesChanged; /* The size of eliminated lines */
+    uint16_t changedLines[]; /* Which lines to eliminate */
 } msg_update_client_state;
 #pragma pop
 

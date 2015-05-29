@@ -38,6 +38,12 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
         case USER_ACTION:
             totalBytes += sizeof(msg_user_action);
             break;
+        case REG_ACK:
+            totalBytes += sizeof(msg_reg_ack);
+            break;
+        case KICK_CLIENT:
+            totalBytes += sizeof(msg_kick_client);
+            break;
 
         /* Handling of variable length fields */
         case UPDATE_CLIENT_STATE:
