@@ -26,6 +26,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
     msg_update_client_state *upClient = NULL;
     msg_create_room *croom = NULL;
     msg_register_client *rclient = NULL;
+    msg_kick_client *kclient = NULL;
     ssize_t totalBytes = sizeof(packet_t);
 
     switch(t) {
@@ -40,9 +41,6 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
             break;
         case REG_ACK:
             totalBytes += sizeof(msg_reg_ack);
-            break;
-        case KICK_CLIENT:
-            totalBytes += sizeof(msg_kick_client);
             break;
 
         /* Handling of variable length fields */
@@ -72,6 +70,15 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
             rclient = (msg_register_client*)p->data;
             totalBytes += sizeof(msg_register_client) + \
                 rclient->nameLength * sizeof(char);
+            break;
+        case KICK_CLIENT:
+            if (len < sizeof(msg_kick_client)) {
+                return false;
+            }
+
+            kclient = (msg_kick_client*)p->data;
+            totalBytes += sizeof(msg_kick_client) + \
+                kclient->reasonLength * sizeof(char);
             break;
         default:
             WARNING("WARNING: unhandled type passed in (%d)\n", t);

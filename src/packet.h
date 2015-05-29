@@ -111,6 +111,7 @@ typedef struct _msg_user_action {
 #pragma pack(1)
 typedef struct _msg_kick_client {
     uint8_t kickStatus;
+    uint16_t reasonLength;
     char reason[];
 } msg_kick_client;
 #pragma pop
