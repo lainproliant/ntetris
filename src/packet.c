@@ -78,7 +78,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             kclient = (msg_kick_client*)p->data;
             totalBytes += sizeof(msg_kick_client) + \
-                kclient->reasonLength * sizeof(char);
+                ntohs(kclient->reasonLength) * sizeof(char);
             break;
         default:
             WARNING("WARNING: unhandled type passed in (%d)\n", t);
