@@ -21,7 +21,7 @@ if 'sunos' in sys.platform:
   cflags = ' '.join((cflags, '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s', '-xO5'))
   ntetris_cfiles.append('strtonum.c')
   ntetris_srv_files.append('strtonum.c')
-  srvliblist.extend('socket', 'mtmalloc')
+  srvliblist.extend(['socket', 'mtmalloc'])
 
 env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
