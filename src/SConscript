@@ -2,7 +2,7 @@ import os
 import sys
 
 pkg_config_cmd = "pkg-config"
-srvliblist = ['glib-2.0', 'ncurses', 'uv', 'mtmalloc']
+srvliblist = ['glib-2.0', 'ncurses', 'uv']
 liblist = ['glib-2.0', 'ncurses']
 cflags = '-m64 -I/usr/local/include'
 linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
@@ -15,12 +15,13 @@ if sys.platform == "darwin":
 
 if 'linux' in sys.platform:
   liblist.append('bsd')
+  srvliblist.append('bsd')
 
 if 'sunos' in sys.platform:
   cflags = ' '.join((cflags, '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s', '-xO5'))
   ntetris_cfiles.append('strtonum.c')
   ntetris_srv_files.append('strtonum.c')
-  srvliblist.append('socket')
+  srvliblist.extend('socket', 'mtmalloc')
 
 env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')

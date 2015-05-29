@@ -14,7 +14,7 @@ void createErrPacket(packet_t *ret, ERR_CODE e)
 
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock)
 {
-    if(sendto(sock, p, psize, NULL, from, sizeof(struct sockaddr)) < 0) {
+    if(sendto(sock, p, psize, 0, from, sizeof(struct sockaddr)) < 0) {
         WARNING("WARNING: something went wrong in the reply - %s\n", strerror(errno));
     }
 }
