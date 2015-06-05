@@ -21,6 +21,7 @@ NUM_MESSAGES = 10
 class Message:
     type = None
     length = 0
+    version = 0
 
 
 class RegisterTetrad(Message):
@@ -34,7 +35,7 @@ class RegisterClient(Message):
         self.name = name
         self.length = len(name)
     def pack(self):
-        return struct.pack("!BB%ds" % (self.length,), self.type, int(self.length), bytes(self.name, 'utf-8'))
+        return struct.pack("!BBB%ds" % (self.length,), self.version, self.type, int(self.length), bytes(self.name, 'utf-8'))
 
 class UpdateTetrad(Message):
     type = UPDATE_TETRAD
@@ -50,8 +51,8 @@ class UpdateTetrad(Message):
         return self.rot
 
     def unpack(self, msg):
-        (type,x,y,x0,y0,rot) = struct.unpack("!Biiiii", msg)
-
+        (version,type,x,y,x0,y0,rot) = struct.unpack("!BBiiiii", msg)
+        self.version = version
         self.type = type
 
         self.x = x
@@ -71,7 +72,7 @@ class RegAck(Message):
         return self.uid
 
     def unpack(self, msg):
-        (self.type,self.uid) = struct.unpack("!BI", msg)
+        (self.version,self.type,self.uid) = struct.unpack("!BBI", msg)
 
     def __str__(self):
         return "REG_ACK: val=%d" % (self.uid)
@@ -97,7 +98,8 @@ class UpdateClientState(Message):
         return self.lines_changed    
 
     def unpack(self, msg):
-        (type,nl,score,lvl,stat,nlc) = struct.unpack_from('!BiiiBB', msg)
+        (version,type,nl,score,lvl,stat,nlc) = struct.unpack_from('!BBiiiBB', msg)
+        self.version = version
         self.lines = nl
         self.score = score
         self.level = lvl
@@ -138,8 +140,9 @@ class ErrorMsg(Message):
     type = ERROR
     
     def unpack(self, msg):
-        (type, val) = struct.unpack("!BB", msg)
+        (version, type, val) = struct.unpack("!BBB", msg)
 
+        self.version = version
         self.type = type
         self.val = val
 
@@ -179,19 +182,19 @@ def main():
             print("Bye!")
             exit(0)
         print("received msg from: %s" % str(addr))
-        if int(data[0]) == ERROR:
+        if int(data[1]) == ERROR:
             msg = ErrorMsg()
             msg.unpack(data)
             print(msg) 
-        elif int(data[0]) == UPDATE_TETRAD:
+        elif int(data[1]) == UPDATE_TETRAD:
             msg = UpdateTetrad()
             msg.unpack(data)
             print(msg)
-        elif int(data[0]) == UPDATE_CLIENT_STATE:
+        elif int(data[1]) == UPDATE_CLIENT_STATE:
             msg = UpdateClientState()
             msg.unpack(data)
             print(msg)
-        elif int(data[0]) == REG_ACK:
+        elif int(data[1]) == REG_ACK:
             msg = RegAck()
             msg.unpack(data)
             print(msg)
@@ -201,6 +204,7 @@ def main():
             print(data)
             
         #start = time.time()
-        sock.sendto(message.pack(), (hostname, int(port)))
+        #sock.sendto(message.pack(), (hostname, int(port)))
+        print('Waiting for message from server...')
 if __name__=="__main__":
     main()
