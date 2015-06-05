@@ -15,6 +15,7 @@ typedef enum _MSG_TYPE {
     DISCONNECT_CLIENT, /* The client disconnected from the server */
     KICK_CLIENT, /* The client was kicked from the server */
     CREATE_ROOM, /* A new game is created, with up to 4 boards */
+    LIST_ROOMS, /* List the available rooms to join */
     USER_ACTION, /* A client is sending an action to be parsed */
     ERR_PACKET, /* There was an error parsing the client's packet */
     REG_ACK, /* Client registration acknowledgement */
@@ -96,7 +97,8 @@ typedef struct _msg_update_client_state {
 typedef struct _msg_create_room {
     uint8_t numPlayers;
     uint8_t roomNameLen;
-    char roomName[];
+    uint8_t passLen;
+    char roomNameAndPass[];
 } msg_create_room;
 #pragma pop
 
