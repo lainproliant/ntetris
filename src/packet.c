@@ -67,7 +67,8 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             croom = (msg_create_room*)p->data;
             totalBytes += sizeof(msg_create_room) + \
-                croom->roomNameLen * sizeof(char);
+                croom->roomNameLen * sizeof(char) + \
+                croom->passLen * sizeof(char);
             break;
         case REGISTER_CLIENT:
             if (len < sizeof(msg_register_client)) {
