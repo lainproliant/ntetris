@@ -72,6 +72,14 @@ void handle_msg(uv_work_t *req)
     packet_t *ackPack = ackPackBuf;
     ssize_t ePktSize = -1;
 
+    if ( PROTOCOL_VERSION != pkt->version ) {
+        WARNING("Incorrect/unexpected protocol version\n"
+                "Expected version %d, got %d :(\n", 
+                PROTOCOL_VERSION, pkt->version); 
+        createErrPacket(errPkt, BAD_PROTOCOL);
+        reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+    }
+
     /* Validate lengths */
     if(!validateLength((packet_t*)r->payload, r->len, packetType, &ePktSize)) {
         WARNING("Incorrect/unexpected packet length\n"
@@ -139,7 +147,7 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
         return;
     }
 
-    if (nread == 0) {
+    if (nread < 2) {
         if(flags & UV_UDP_PARTIAL) {
             WARN("Lost some of the buffer\n");
         }

@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#define PROTOCOL_VERSION 0
+
 typedef enum _MSG_TYPE {
     REGISTER_TETRAD, /* A new tetrad is in play */
     REGISTER_CLIENT, /* A new client has joined the server */
@@ -36,7 +38,8 @@ typedef enum _ERROR_CODE {
    UNSUPPORTED_MSG = 1, /* Message with unknown type */
    ILLEGAL_MSG = 2, /* Illegal message sent to server */
    BAD_LEN = 3, /* Invalid packet length */
-   SUCCESS = 4, /* Just here for debugging the replies, will remove */
+   BAD_PROTOCOL = 4, /* Protocol version not PROTOCOL_VERSION */
+   SUCCESS = 5, /* Just here for debugging the replies, will remove */
    NUM_ERR_CODES
 } ERR_CODE;
 
@@ -44,6 +47,7 @@ typedef enum _ERROR_CODE {
  * needed for variable length packets. */
 #pragma pack(1)
 typedef struct _packet_t {
+    uint8_t version = PROTOCOL_VERSION; /* ABSOLUTE, for now always equals 0 */
     uint8_t type; /* the type of message */
     uint8_t data[];  /* the raw bytes to marshall and demarshall */
 } packet_t;
@@ -124,4 +128,4 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */
-#define ERRMSG_SIZE 2*sizeof(uint8_t)
+#define ERRMSG_SIZE sizeof(packet_t)+sizeof(msg_err) 

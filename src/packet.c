@@ -9,6 +9,7 @@
 void createErrPacket(packet_t *ret, ERR_CODE e)
 {
     ret->type = (uint8_t)ERR_PACKET;
+    ret->version = PROTOCOL_VERSION;
     *(ret->data) = e;
 }
 
