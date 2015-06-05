@@ -47,7 +47,7 @@ typedef enum _ERROR_CODE {
  * needed for variable length packets. */
 #pragma pack(1)
 typedef struct _packet_t {
-    uint8_t version = PROTOCOL_VERSION; /* ABSOLUTE, for now always equals 0 */
+    uint8_t version; /* ABSOLUTE, for now always equals 0 */
     uint8_t type; /* the type of message */
     uint8_t data[];  /* the raw bytes to marshall and demarshall */
 } packet_t;
@@ -122,6 +122,7 @@ typedef struct _msg_kick_client {
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
+void setProtocolVers(packet_t *p);
 
 /* This is meant to be used by both client & server */
 bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize);

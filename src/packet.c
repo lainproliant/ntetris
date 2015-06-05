@@ -15,9 +15,15 @@ void createErrPacket(packet_t *ret, ERR_CODE e)
 
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock)
 {
+    setProtocolVers(p);
     if(sendto(sock, p, psize, 0, from, sizeof(struct sockaddr)) < 0) {
         WARNING("WARNING: something went wrong in the reply - %s\n", strerror(errno));
     }
+}
+
+void setProtocolVers(packet_t *p)
+{
+    p->version = PROTOCOL_VERSION;
 }
 
 /* If this function doesn't modify expectedSize, assume malformed packet */
