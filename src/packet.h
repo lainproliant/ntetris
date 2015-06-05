@@ -1,9 +1,9 @@
 #pragma once
 
 #include <stdint.h>
-#include <uv.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <sys/socket.h>
 
 #define PROTOCOL_VERSION 0
 
