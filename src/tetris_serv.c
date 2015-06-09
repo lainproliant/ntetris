@@ -55,6 +55,7 @@ void init_curses()
     getmaxyx(stdscr, row, col);
     mainWindow = newwin(row, col, 0, 0);
     box(mainWindow, 0, 0);
+    wmove(mainWindow, 1, 1);
     /*noecho();
     raw();*/
 
@@ -141,7 +142,7 @@ void handle_msg(uv_work_t *req)
             m.curPlayerId = htonl(getRand());
             ackPack->type = REG_ACK;
             memcpy(ackPack->data, &m, sizeof(msg_reg_ack));
-            printf("Registering client %s\n", clientName);
+            PRINT("Registering client %s\n", clientName);
             reply(ackPack, sizeof(ackPackBuf), &r->from, vanillaSock);
             free(clientName);
             break;
