@@ -20,7 +20,7 @@ void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock)
 {
     setProtocolVers(p);
     if(sendto(sock, p, psize, 0, from, sizeof(struct sockaddr)) < 0) {
-        WARNING("WARNING: something went wrong in the reply - %s\n", strerror(errno));
+        WARNING("something went wrong in the reply - %s", strerror(errno));
     }
 }
 
@@ -92,7 +92,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
                 ntohs(kclient->reasonLength) * sizeof(char);
             break;
         default:
-            WARNING("WARNING: unhandled type passed in (%d)\n", t);
+            WARNING("unhandled type passed in (%d)", t);
             return false;
             break;
     }

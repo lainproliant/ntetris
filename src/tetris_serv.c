@@ -55,6 +55,8 @@ void init_curses()
     getmaxyx(stdscr, row, col);
     mainWindow = newwin(row, col, 0, 0);
     box(mainWindow, 0, 0);
+    /*noecho();
+    raw();*/
 
     if (has_colors()) {
         start_color();
@@ -101,7 +103,7 @@ void handle_msg(uv_work_t *req)
 
     if ( PROTOCOL_VERSION != pkt->version ) {
         WARNING("Incorrect/unexpected protocol version\n"
-                "Expected version %d, got %d :(\n", 
+                "Expected version %d, got %d :(", 
                 PROTOCOL_VERSION, pkt->version);
         createErrPacket(errPkt, BAD_PROTOCOL);
         reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
@@ -110,7 +112,7 @@ void handle_msg(uv_work_t *req)
     /* Validate lengths */
     if(!validateLength((packet_t*)r->payload, r->len, packetType, &ePktSize)) {
         WARNING("Incorrect/unexpected packet length\n"
-                "Expected %zd bytes, got %zd bytes\n", ePktSize, r->len);
+                "Expected %zd bytes, got %zd bytes", ePktSize, r->len);
         createErrPacket(errPkt, BAD_LEN);
         reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
         return;
@@ -160,7 +162,7 @@ void destroy_msg(uv_work_t *req, int status)
     free(req);
 
     if(status) {
-        WARNING("WARNING: %s\n", uv_err_name(status));
+        WARNING("%s", uv_err_name(status));
     }
 }
 
@@ -168,7 +170,7 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
             const struct sockaddr *addr, unsigned flags)
 {
     if (nread < 0) {
-        WARNING("WARNING: %s\n", uv_err_name(nread));
+        WARNING("%s", uv_err_name(nread));
         uv_close((uv_handle_t*)req, NULL);
         free(buf->base);
         return;
@@ -213,6 +215,9 @@ int main(int argc, char *argv[])
     int port = DEFAULT_PORT;
     const char *stn_err_str = NULL;
 
+#ifdef NCURSES
+    init_curses();
+#endif
 
     static struct option longopts[] = {
         {"port",      required_argument,     NULL,     'p'},
@@ -225,7 +230,7 @@ int main(int argc, char *argv[])
             case 'p':
                 port = strtonum(optarg, 1, UINT16_MAX, &stn_err_str);
                 if (stn_err_str) {
-                    ERROR("Bad value for port: %s\n", stn_err_str);
+                    ERROR("Bad value for port: %s", stn_err_str);
                 }
             case 'r':
                 randFile = fopen(optarg, "r");
@@ -235,10 +240,6 @@ int main(int argc, char *argv[])
     if (!randFile) {
         randFile = fopen("/dev/urandom", "r");
     }
-
-#ifdef NCURSES
-    init_curses();
-#endif
 
     /* There were many possible approaches to take to deal with the lack
      * of thread safety in libuv's uv_udp_send() functions.  These include
