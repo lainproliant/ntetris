@@ -56,9 +56,12 @@ void init_curses()
     mainWindow = newwin(row, col, 0, 0);
     box(mainWindow, 0, 0);
 
-    if (has_colors) {
+    if (has_colors()) {
         start_color();
-    }
+        use_default_colors();
+        init_pair(WARNCOLOR, COLOR_YELLOW, COLOR_BLACK);
+        init_pair(ERRCOLOR, COLOR_RED, COLOR_BLACK);
+    } 
 }
 
 typedef struct _request {
@@ -99,7 +102,7 @@ void handle_msg(uv_work_t *req)
     if ( PROTOCOL_VERSION != pkt->version ) {
         WARNING("Incorrect/unexpected protocol version\n"
                 "Expected version %d, got %d :(\n", 
-                PROTOCOL_VERSION, pkt->version); 
+                PROTOCOL_VERSION, pkt->version);
         createErrPacket(errPkt, BAD_PROTOCOL);
         reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
     }
@@ -233,7 +236,9 @@ int main(int argc, char *argv[])
         randFile = fopen("/dev/urandom", "r");
     }
 
-    //init_curses();
+#ifdef NCURSES
+    init_curses();
+#endif
 
     /* There were many possible approaches to take to deal with the lack
      * of thread safety in libuv's uv_udp_send() functions.  These include
@@ -258,8 +263,9 @@ int main(int argc, char *argv[])
     uv_run(loop, UV_RUN_DEFAULT);
 
     /* state cleanup */
-    /*fprintf(stderr, "dying\n");
-    endwin(); */
+#ifdef NCURSES
+    endwin();
+#endif
     uv_loop_close(uv_default_loop());
 
     return 0;
