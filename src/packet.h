@@ -16,9 +16,12 @@ typedef enum _MSG_TYPE {
     KICK_CLIENT, /* The client was kicked from the server */
     CREATE_ROOM, /* A new game is created, with up to 4 boards */
     LIST_ROOMS, /* List the available rooms to join */
+    ROOM_ANNOUNCE, /* Server sends client room / game info */
+    JOIN_ROOM, /* Client picks a room to join */
     USER_ACTION, /* A client is sending an action to be parsed */
     ERR_PACKET, /* There was an error parsing the client's packet */
     REG_ACK, /* Client registration acknowledgement */
+    PING, /* Client pings back to the server to prevent auto timeout */
     NUM_MESSAGES
 } MSG_TYPE;
 
@@ -95,9 +98,10 @@ typedef struct _msg_update_client_state {
 
 #pragma pack(1)
 typedef struct _msg_create_room {
-    uint8_t numPlayers;
-    uint8_t roomNameLen;
-    uint8_t passLen;
+    uint32_t playerId; /* Unique player identifier to basic auth */
+    uint8_t numPlayers; /* The number of players to wait for */
+    uint8_t roomNameLen; /* The length of the room string */
+    uint8_t passLen; /* The length of the password string */
     char roomNameAndPass[];
 } msg_create_room;
 #pragma pop
@@ -110,7 +114,8 @@ typedef struct _msg_reg_ack {
 
 #pragma pack(1)
 typedef struct _msg_user_action {
-    uint8_t cmd;
+    uint32_t playerId; /* The unique playerId assigned via ack */
+    uint8_t cmd; /* the command the player is sending to server */
 } msg_user_action;
 #pragma pop
 
@@ -122,12 +127,38 @@ typedef struct _msg_kick_client {
 } msg_kick_client;
 #pragma pop
 
+#pragma pack(1)
+typedef struct _msg_ping {
+    uint32_t playerId;
+} msg_ping;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_room_announce {
+    uint32_t roomId; /* The unique room identifier */
+    uint8_t numPlayers; /* Number of players before game starts */
+    uint8_t numJoinedPlayers; /* Number of players currently waiting */
+    bool passwordProtected; /* True if password protected */
+    uint8_t roomNameLen; /* Length of room name string that follows */
+    char roomName[]; /* Name of the room */
+} msg_room_announce;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_join_room {
+    uint32_t playerId; /* The unique player identifier for basic auth */
+    uint32_t roomId; /* The id number of the room the client is joining */
+    uint8_t passwordLen; /* The length of the password the user is attempting */
+    char password[]; /* The variable length password field */
+} msg_join_room;
+
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
 void setProtocolVers(packet_t *p);
 
 /* This is meant to be used by both client & server */
-bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize);
+bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, \
+                    ssize_t *expectedSize);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

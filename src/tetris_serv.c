@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <strings.h>
 #include <string.h>
+#include <ncurses.h>
 
 #ifdef __sun
 #include "strtonum.h"
@@ -26,6 +27,7 @@ uv_udp_t g_recv_sock;
 uv_udp_t g_send_sock;
 
 static int vanillaSock;
+WINDOW *mainWindow = NULL;
 
 /* This will be the source of randomness, in solaris /dev/urandom
  * is non-blocking but under the hood should use KCF for secure
@@ -45,11 +47,33 @@ uint32_t getRand()
     return retVal;
 }
 
+void init_curses()
+{
+    /* initialize the ncurses screen */
+    initscr();
+    int row, col;
+    getmaxyx(stdscr, row, col);
+    mainWindow = newwin(row, col, 0, 0);
+    box(mainWindow, 0, 0);
+
+    if (has_colors) {
+        start_color();
+    }
+}
+
 typedef struct _request {
     ssize_t len;
     void *payload;
     struct sockaddr from;
 } request;
+
+void idler_task(uv_idle_t *handle)
+{
+    /* Refresh the ncurses screen */
+    if (mainWindow != NULL) {
+        wrefresh(mainWindow);
+    }
+}
 
 void handle_msg(uv_work_t *req)
 {
@@ -184,7 +208,7 @@ int main(int argc, char *argv[])
 {
     int go_ret;
     int port = DEFAULT_PORT;
-    const char *err_str = NULL;
+    const char *stn_err_str = NULL;
 
 
     static struct option longopts[] = {
@@ -196,9 +220,9 @@ int main(int argc, char *argv[])
     while ((go_ret = getopt_long(argc, argv, "p:r:", longopts, NULL)) != -1) {
        switch (go_ret) {
             case 'p':
-                port = strtonum(optarg, 1, UINT16_MAX, &err_str);
-                if (err_str) {
-                    ERR("Bad value for port");
+                port = strtonum(optarg, 1, UINT16_MAX, &stn_err_str);
+                if (stn_err_str) {
+                    ERROR("Bad value for port: %s\n", stn_err_str);
                 }
             case 'r':
                 randFile = fopen(optarg, "r");
@@ -209,6 +233,8 @@ int main(int argc, char *argv[])
         randFile = fopen("/dev/urandom", "r");
     }
 
+    //init_curses();
+
     /* There were many possible approaches to take to deal with the lack
      * of thread safety in libuv's uv_udp_send() functions.  These include
      * async_send, multiple outbound sockets on a per thread basis,
@@ -218,6 +244,9 @@ int main(int argc, char *argv[])
 
     uv_loop_t *loop = uv_default_loop();
     uv_udp_init(loop, &g_recv_sock);
+    uv_idle_t idler;
+    uv_idle_init(loop, &idler);
+    uv_idle_start(&idler, idler_task);
     //uv_udp_init(loop, &g_send_sock);
     struct sockaddr_in recaddr;
 
@@ -226,6 +255,12 @@ int main(int argc, char *argv[])
     uv_udp_recv_start(&g_recv_sock, malloc_cb, onrecv);
 
     vanillaSock = socket(AF_INET, SOCK_DGRAM, 0);
+    uv_run(loop, UV_RUN_DEFAULT);
 
-    return uv_run(loop, UV_RUN_DEFAULT);
+    /* state cleanup */
+    /*fprintf(stderr, "dying\n");
+    endwin(); */
+    uv_loop_close(uv_default_loop());
+
+    return 0;
 }
