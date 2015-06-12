@@ -44,8 +44,9 @@ typedef enum _ERROR_CODE {
    ILLEGAL_MSG = 2, /* Illegal message sent to server */
    BAD_LEN = 3, /* Invalid packet length */
    BAD_PROTOCOL = 4, /* Protocol version not PROTOCOL_VERSION */
-   SUCCESS = 5, /* Just here for debugging the replies, will remove */
-   BAD_NAME = 6, /* The user's namestr is too long or stupid */
+   BAD_NAME = 5, /* The user's namestr is too long or stupid */
+   BAD_ROOM_NAME = 6,
+   SUCCESS = 7, /* Just here for debugging the replies, will remove */
    NUM_ERR_CODES
 } ERR_CODE;
 
@@ -136,6 +137,12 @@ typedef struct _msg_ping {
 #pragma pop
 
 #pragma pack(1)
+typedef struct _msg_list_rooms {
+    uint32_t playerId;
+} msg_list_rooms;
+#pragma pop
+
+#pragma pack(1)
 typedef struct _msg_room_announce {
     uint32_t roomId; /* The unique room identifier */
     uint8_t numPlayers; /* Number of players before game starts */
@@ -171,6 +178,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, \
                     ssize_t *expectedSize);
 
 bool validateName(msg_register_client *m);
+bool validateRoomName(msg_create_room *m);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

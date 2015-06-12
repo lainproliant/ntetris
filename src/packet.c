@@ -61,6 +61,9 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
         case DISCONNECT_CLIENT:
             totalBytes += sizeof(msg_disconnect_client);
             break;
+        case LIST_ROOMS:
+            totalBytes += sizeof(msg_list_rooms);
+            break;
 
         /* Handling of variable length fields */
         case UPDATE_CLIENT_STATE:
@@ -129,7 +132,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
 bool validateName(msg_register_client *m)
 {
-    if (m->nameLength > MAX_NAMELEN && m->nameLength > 0) {
+    if (m->nameLength > MAX_NAMELEN || m->nameLength == 0) {
         return false;
     } else {
         for (size_t i = 0; i < m->nameLength; ++i) {
@@ -140,4 +143,20 @@ bool validateName(msg_register_client *m)
     }
 
     return true;
+}
+
+bool validateRoomName(msg_create_room *m)
+{
+    if (m->roomNameLen > MAX_NAMELEN || m->roomNameLen == 0) {
+        return false;
+    } else {
+        for (size_t i = 0; i < m->roomNameLen; ++i) {
+            if (!isprint(m->roomNameAndPass[i])) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+    
 }

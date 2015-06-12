@@ -6,6 +6,7 @@
 #include <strings.h>
 #include <string.h>
 #include <ncurses.h>
+#include <glib.h>
 
 #ifdef __sun
 #include "strtonum.h"
@@ -38,6 +39,10 @@ WINDOW *mainWindow = NULL;
  * Honestly this doesn't need to be cryptographically secure, just
  * varied enough and not ridiculously predictable */
 FILE *randFile = NULL;
+
+/* Put rw locks here */
+static GHashTable *playersByNames = NULL;
+static GHashTable *playersById = NULL;
 
 /* This function does necessitate a syscall, so perhaps we should
 only call this to a faster PRNG after so many calls */
@@ -108,8 +113,10 @@ void handle_msg(uv_work_t *req)
     MSG_TYPE packetType = (MSG_TYPE)pkt->type;
     msg_err errMsg;
     msg_register_client *rclient = NULL;
+    msg_create_room *croom = NULL;
     char *clientName = NULL;
     msg_reg_ack m;
+    char senderIP[20] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
     uint8_t errPktBuf[ERRMSG_SIZE];
@@ -141,7 +148,6 @@ void handle_msg(uv_work_t *req)
         case ERR_PACKET:
         case KICK_CLIENT:
         case UPDATE_CLIENT_STATE:
-        case REG_ACK:
             createErrPacket(errPkt, ILLEGAL_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             break;
@@ -169,6 +175,19 @@ void handle_msg(uv_work_t *req)
             PRINT("Registering client %s\n", clientName);
             reply(ackPack, sizeof(ackPackBuf), &r->from, vanillaSock);
             free(clientName);
+            break;
+
+        case CREATE_ROOM:
+            croom = (msg_create_room*)(pkt->data);
+            
+            if(!validateRoomName(croom)) {
+                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 19);
+                WARN("Non-printable or too long room name from %s!", senderIP);
+                createErrPacket(errPkt, BAD_NAME);
+                reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+                return;
+            }
+
             break;
 
         default:
