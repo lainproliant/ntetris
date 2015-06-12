@@ -4,6 +4,7 @@
 #include <string.h>
 #include "macros.h"
 #include <errno.h>
+#include <ctype.h>
 #include <sys/socket.h>
 
 /* Nothing sloppier than sweet sweet errno-like techniques :) */
@@ -37,6 +38,8 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
     msg_create_room *croom = NULL;
     msg_register_client *rclient = NULL;
     msg_kick_client *kclient = NULL;
+    msg_join_room *jroom = NULL;
+    msg_room_announce *aroom = NULL;
     ssize_t totalBytes = sizeof(packet_t);
 
     switch(t) {
@@ -51,6 +54,12 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
             break;
         case REG_ACK:
             totalBytes += sizeof(msg_reg_ack);
+            break;
+        case PING:
+            totalBytes += sizeof(msg_ping);
+            break;
+        case DISCONNECT_CLIENT:
+            totalBytes += sizeof(msg_disconnect_client);
             break;
 
         /* Handling of variable length fields */
@@ -91,6 +100,24 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
             totalBytes += sizeof(msg_kick_client) + \
                 ntohs(kclient->reasonLength) * sizeof(char);
             break;
+        case JOIN_ROOM:
+            if (len < sizeof(msg_join_room)) {
+                return false;
+            }
+
+            jroom = (msg_join_room*)p->data;
+            totalBytes += sizeof(msg_join_room) + \
+                ntohs(jroom->passwordLen) * sizeof(char);
+            break;
+        case ROOM_ANNOUNCE:
+            if (len < sizeof(msg_room_announce)) {
+                return false;
+            }
+
+            aroom = (msg_room_announce*)p->data;
+            totalBytes += sizeof(msg_room_announce) + \
+                ntohs(aroom->roomNameLen) * sizeof(char);
+            break;
         default:
             WARNING("unhandled type passed in (%d)", t);
             return false;
@@ -98,4 +125,19 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
     }
             *expectedSize = totalBytes;
             return (len == totalBytes);
+}
+
+bool validateName(msg_register_client *m)
+{
+    if (m->nameLength > MAX_NAMELEN && m->nameLength > 0) {
+        return false;
+    } else {
+        for (size_t i = 0; i < m->nameLength; ++i) {
+            if (!isprint(m->name[i])) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }

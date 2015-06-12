@@ -27,6 +27,7 @@ uv_udp_t g_recv_sock;
 uv_udp_t g_send_sock;
 
 static int vanillaSock;
+int row, col;
 WINDOW *mainWindow = NULL;
 
 /* This will be the source of randomness, in solaris /dev/urandom
@@ -47,11 +48,22 @@ uint32_t getRand()
     return retVal;
 }
 
+void updateWin()
+{
+    /* Set the cursor back to the origins of the window */
+    rewind(stdout);
+    getmaxyx(stdscr, row, col);
+    delwin(mainWindow);
+    mainWindow = NULL;
+    mainWindow = newwin(row - 1, col, 0, 0);
+    box(mainWindow, 0, 0);
+    wrefresh(mainWindow);
+}
+
 void init_curses()
 {
     /* initialize the ncurses screen */
     initscr();
-    int row, col;
     getmaxyx(stdscr, row, col);
     mainWindow = newwin(row, col, 0, 0);
     box(mainWindow, 0, 0);
@@ -65,6 +77,8 @@ void init_curses()
         init_pair(WARNCOLOR, COLOR_YELLOW, COLOR_BLACK);
         init_pair(ERRCOLOR, COLOR_RED, COLOR_BLACK);
     } 
+
+    scrollok(mainWindow, true);
 }
 
 typedef struct _request {
@@ -77,6 +91,8 @@ void idler_task(uv_idle_t *handle)
 {
     /* Refresh the ncurses screen */
     if (mainWindow != NULL) {
+        //updateWin();
+        scrollok(mainWindow, true);
         wrefresh(mainWindow);
     }
 }
@@ -108,6 +124,7 @@ void handle_msg(uv_work_t *req)
                 PROTOCOL_VERSION, pkt->version);
         createErrPacket(errPkt, BAD_PROTOCOL);
         reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+        return;
     }
 
     /* Validate lengths */
@@ -131,6 +148,13 @@ void handle_msg(uv_work_t *req)
 
         case REGISTER_CLIENT:
             rclient = (msg_register_client*)(pkt->data);
+
+            if (!validateName(rclient)) {
+                WARN("Non-printable or name length too long!");
+                createErrPacket(errPkt, BAD_NAME);
+                reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+                return;
+            }
 
             /* This won't be NULL terminated */
             clientName = malloc(rclient->nameLength + 1);

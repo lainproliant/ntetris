@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 
 #define PROTOCOL_VERSION 0
+#define MAX_NAMELEN 30
 
 typedef enum _MSG_TYPE {
     REGISTER_TETRAD, /* A new tetrad is in play */
@@ -44,6 +45,7 @@ typedef enum _ERROR_CODE {
    BAD_LEN = 3, /* Invalid packet length */
    BAD_PROTOCOL = 4, /* Protocol version not PROTOCOL_VERSION */
    SUCCESS = 5, /* Just here for debugging the replies, will remove */
+   BAD_NAME = 6, /* The user's namestr is too long or stupid */
    NUM_ERR_CODES
 } ERR_CODE;
 
@@ -151,6 +153,14 @@ typedef struct _msg_join_room {
     uint8_t passwordLen; /* The length of the password the user is attempting */
     char password[]; /* The variable length password field */
 } msg_join_room;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_disconnect_client {
+    uint32_t playerId;
+} msg_disconnect_client;
+#pragma pop
+
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
@@ -159,6 +169,8 @@ void setProtocolVers(packet_t *p);
 /* This is meant to be used by both client & server */
 bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, \
                     ssize_t *expectedSize);
+
+bool validateName(msg_register_client *m);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

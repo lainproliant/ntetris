@@ -3,7 +3,6 @@
 
 /* The proper way to do this is probably terminal control sequences :-/ */
 
-//#define RESET   "\033[0m"
 #define RESET "\033[0m"
 #define BLACK   "\033[30m"      /* Black */
 #define RED     "\033[31m"      /* Red */
@@ -51,7 +50,7 @@
 #define PRINT(...) do { \
         int row, col; \
         getyx(mainWindow, row, col); \
-        mvwprintw(mainWindow, row, col+1, __VA_ARGS__); \
+        mvwprintw(mainWindow, row, col+2, __VA_ARGS__); \
     } while(0)
 #else
 
