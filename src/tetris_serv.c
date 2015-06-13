@@ -75,7 +75,9 @@ void printPlayer(gpointer k, gpointer v, gpointer d)
 void printPlayers(uv_timer_t *h)
 {
     PRINT("PlayerList = \n");
+    uv_rwlock_rdlock(playerTableLock);
     g_hash_table_foreach(playersById, (GHFunc)printPlayer, NULL);
+    uv_rwlock_rdunlock(playerTableLock);
 }
 
 void gh_freeplayer(gpointer k, gpointer v, gpointer d)
@@ -227,7 +229,6 @@ void handle_msg(uv_work_t *req)
                     goto name_collide;
                 }
 
-
                 newPlayer = createPlayer(clientName, r->from, genPlayerId());
                 g_hash_table_insert(playersByNames, clientName, newPlayer);
                 g_hash_table_insert(playersById,
@@ -302,7 +303,7 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
 
     if (nread < 2) {
         if(flags & UV_UDP_PARTIAL) {
-            WARN("Lost some of the buffer\n");
+            WARN("Lost some of the buffer");
         }
         free(buf->base);
         return;
