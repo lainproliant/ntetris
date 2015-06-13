@@ -24,6 +24,5 @@ typedef struct _player_t {
     char *name; /* The player's name */
 } player_t;
 
-player_t *createPlayer(const char *name, uint16_t nameLen, 
-                       struct sockaddr sock, unsigned int id);
+player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id);
 void *destroyPlayer(player_t *p);

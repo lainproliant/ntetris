@@ -81,7 +81,7 @@ void printPlayers(uv_timer_t *h)
 void gh_freeplayer(gpointer k, gpointer v, gpointer d)
 {
     player_t *p = (player_t*)v;
-
+    destroyPlayer(p);
 }
 
 void killPlayers(uv_timer_t *h)
@@ -191,6 +191,7 @@ void handle_msg(uv_work_t *req)
         case UPDATE_CLIENT_STATE:
             createErrPacket(errPkt, ILLEGAL_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            return;
             break;
 
         case REGISTER_CLIENT:
@@ -204,23 +205,32 @@ void handle_msg(uv_work_t *req)
             }
 
             /* This won't be NULL terminated */
-            /*clientName = malloc(rclient->nameLength + 1);
-            strlcpy(clientName, rclient->name, rclient->nameLength + 1);*/
+            clientName = malloc(rclient->nameLength + 1);
+            strlcpy(clientName, rclient->name, rclient->nameLength + 1);
 
             /* If this far, name meets requirements, now check for collisions */
             uv_rwlock_rdlock(playerTableLock);
 
-            /* If there's no player with that name */
-            if (!g_hash_table_lookup(playersByNames, rclient->name)) {
+            /* If there's no player with that name
+             * Note: contains is probably a faster function for this but Oracle
+             * and illumos both do not distribute very modern versions of glib
+             * which contain these variants */
+            if (!g_hash_table_lookup(playersByNames, clientName)) {
                 uv_rwlock_rdunlock(playerTableLock);
-
+                
                 /* Make sure nothing can read or write to this but us */
                 uv_rwlock_wrlock(playerTableLock);
-                newPlayer = createPlayer(rclient->name, rclient->nameLength, 
-                                         r->from, genPlayerId());
 
-                g_hash_table_insert(playersByNames, rclient->name, newPlayer);
-                g_hash_table_insert(playersById, 
+                if (g_hash_table_lookup(playersByNames, clientName)) {
+                    WARN("Somebody took our name while waiting for lock");
+                    uv_rwlock_wrunlock(playerTableLock);
+                    goto name_collide;
+                }
+
+
+                newPlayer = createPlayer(clientName, r->from, genPlayerId());
+                g_hash_table_insert(playersByNames, clientName, newPlayer);
+                g_hash_table_insert(playersById,
                                     GINT_TO_POINTER(newPlayer->playerId), 
                                     newPlayer);
 
@@ -234,14 +244,15 @@ void handle_msg(uv_work_t *req)
 
             } else { /* Name collision, send back error */
                 uv_rwlock_rdunlock(playerTableLock);
-                /* To print we'd have to alloc and NULL terminate this string,
-                 * fornow we'll just warn there was a collision */
-                WARN("Name collision");
+name_collide:
+                WARNING("Name collision for %s", clientName);
+                free(clientName);
                 createErrPacket(errPkt, BAD_NAME);
                 reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
                 return;
             }
 
+            return;
             break;
 
         case CREATE_ROOM:
@@ -261,8 +272,10 @@ void handle_msg(uv_work_t *req)
             WARN("Unhandled packet type!!!!\n");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            return;
             break;
     }
+
 }
 
 void destroy_msg(uv_work_t *req, int status)
@@ -360,9 +373,9 @@ int main(int argc, char *argv[])
     playerTableLock = malloc(sizeof(uv_rwlock_t));
     uv_rwlock_init(playerTableLock);
 
-    /* Hopefully no collisions on playersByNames */
+    /* Hopefully no collisions on playersById */
     playersById = g_hash_table_new(NULL, NULL);
-    playersByNames = g_hash_table_new(g_str_hash, NULL);
+    playersByNames = g_hash_table_new(g_str_hash, g_str_equal);
 
     uv_loop_t *loop = uv_default_loop();
     uv_udp_init(loop, &g_recv_sock);
@@ -371,6 +384,7 @@ int main(int argc, char *argv[])
     uv_idle_start(&idler, idler_task);
     struct sockaddr_in recaddr;
 
+    /* TODO: remove these, they are for testing */
     uv_timer_t timer_req;
     uv_timer_t timer_req2;
 
@@ -378,6 +392,7 @@ int main(int argc, char *argv[])
     uv_timer_init(loop, &timer_req2);
     uv_timer_start(&timer_req, printPlayers, 50000, 50000);
     uv_timer_start(&timer_req2, killPlayers, 80000, 80000);
+    /* end remove */
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
     uv_udp_bind(&g_recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);

@@ -8,15 +8,13 @@
 #include <string.h>
 #endif
 
-player_t *createPlayer(const char *name, uint16_t nameLen, 
-                       struct sockaddr sock, unsigned int id)
+player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
 {
     player_t *p = malloc(sizeof(player_t));
     p->playerId = id;
 
     /* name param is expected to not be NUL teriminated, this fixes that */
-    p->name = malloc(nameLen + 1);
-    strlcpy(p->name, name, nameLen + 1);
+    p->name = name;
     PRINT("Creating player (%u, %s)\n", id, p->name);
 
     p->state = AWAITING_CLIENT_ACK;
