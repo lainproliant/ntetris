@@ -20,16 +20,16 @@
 #include <uv.h>
 #include <pthread.h>
 #include "packet.h"
+#include "player.h"
 #include "macros.h"
 
 #define DEFAULT_PORT 48879
 
-uv_udp_t g_recv_sock;
-uv_udp_t g_send_sock;
+static uv_udp_t g_recv_sock;
 
 static int vanillaSock;
 int row, col;
-WINDOW *mainWindow = NULL;
+static WINDOW *mainWindow = NULL;
 
 /* This will be the source of randomness, in solaris /dev/urandom
  * is non-blocking but under the hood should use KCF for secure
@@ -38,9 +38,10 @@ WINDOW *mainWindow = NULL;
  * pools provided by these files as a seed to better generators.
  * Honestly this doesn't need to be cryptographically secure, just
  * varied enough and not ridiculously predictable */
-FILE *randFile = NULL;
+static FILE *randFile = NULL;
 
 /* Put rw locks here */
+static uv_rwlock_t *playerTableLock = NULL;
 static GHashTable *playersByNames = NULL;
 static GHashTable *playersById = NULL;
 
@@ -51,6 +52,45 @@ uint32_t getRand()
     uint32_t retVal = 0;
     fread(&retVal, sizeof(uint32_t), 1, randFile);
     return retVal;
+}
+
+uint32_t genPlayerId()
+{
+    /* Find a non-colliding Id, probably will not require many loops */
+    uint32_t retVal = getRand();
+
+    do {
+        retVal = getRand();
+    } while (g_hash_table_lookup(playersById, GINT_TO_POINTER(retVal)));
+
+    return retVal;
+}
+
+void printPlayer(gpointer k, gpointer v, gpointer d)
+{
+    player_t *p = (player_t*)v;
+    PRINT("\t%s [id=%u, ptr=%p]\n", p->name, p->playerId, p);
+}
+
+void printPlayers(uv_timer_t *h)
+{
+    PRINT("PlayerList = \n");
+    g_hash_table_foreach(playersById, (GHFunc)printPlayer, NULL);
+}
+
+void gh_freeplayer(gpointer k, gpointer v, gpointer d)
+{
+    player_t *p = (player_t*)v;
+
+}
+
+void killPlayers(uv_timer_t *h)
+{
+    uv_rwlock_wrlock(playerTableLock);
+    g_hash_table_foreach(playersById, (GHFunc)gh_freeplayer, NULL);
+    g_hash_table_remove_all(playersById);
+    g_hash_table_remove_all(playersByNames);
+    uv_rwlock_wrunlock(playerTableLock);
 }
 
 void updateWin()
@@ -115,7 +155,8 @@ void handle_msg(uv_work_t *req)
     msg_register_client *rclient = NULL;
     msg_create_room *croom = NULL;
     char *clientName = NULL;
-    msg_reg_ack m;
+    player_t *newPlayer = NULL;
+    msg_reg_ack m_ack;
     char senderIP[20] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
@@ -163,18 +204,44 @@ void handle_msg(uv_work_t *req)
             }
 
             /* This won't be NULL terminated */
-            clientName = malloc(rclient->nameLength + 1);
-            strlcpy(clientName, rclient->name, rclient->nameLength + 1);
+            /*clientName = malloc(rclient->nameLength + 1);
+            strlcpy(clientName, rclient->name, rclient->nameLength + 1);*/
 
-            /* Do something with this information, haven't written this
-             * function just yet */ 
-            // m = register_client(clientName, r->from);
-            m.curPlayerId = htonl(getRand());
-            ackPack->type = REG_ACK;
-            memcpy(ackPack->data, &m, sizeof(msg_reg_ack));
-            PRINT("Registering client %s\n", clientName);
-            reply(ackPack, sizeof(ackPackBuf), &r->from, vanillaSock);
-            free(clientName);
+            /* If this far, name meets requirements, now check for collisions */
+            uv_rwlock_rdlock(playerTableLock);
+
+            /* If there's no player with that name */
+            if (!g_hash_table_lookup(playersByNames, rclient->name)) {
+                uv_rwlock_rdunlock(playerTableLock);
+
+                /* Make sure nothing can read or write to this but us */
+                uv_rwlock_wrlock(playerTableLock);
+                newPlayer = createPlayer(rclient->name, rclient->nameLength, 
+                                         r->from, genPlayerId());
+
+                g_hash_table_insert(playersByNames, rclient->name, newPlayer);
+                g_hash_table_insert(playersById, 
+                                    GINT_TO_POINTER(newPlayer->playerId), 
+                                    newPlayer);
+
+                uv_rwlock_wrunlock(playerTableLock);
+
+                PRINT("Registering client %s\n", newPlayer->name);
+                m_ack.curPlayerId = htonl(newPlayer->playerId);
+                ackPack->type = REG_ACK;
+                memcpy(ackPack->data, &m_ack, sizeof(msg_reg_ack));
+                reply(ackPack, sizeof(ackPackBuf), &r->from, vanillaSock);
+
+            } else { /* Name collision, send back error */
+                uv_rwlock_rdunlock(playerTableLock);
+                /* To print we'd have to alloc and NULL terminate this string,
+                 * fornow we'll just warn there was a collision */
+                WARN("Name collision");
+                createErrPacket(errPkt, BAD_NAME);
+                reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+                return;
+            }
+
             break;
 
         case CREATE_ROOM:
@@ -237,8 +304,6 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
 
     request *theReq = malloc(sizeof(request));
     theReq->payload = buf->base;
-    //memcpy(theReq->payload, buf->base, nread);
-    //free(buf->base);
     theReq->len = nread;
     theReq->from = *addr;
 
@@ -292,13 +357,27 @@ int main(int argc, char *argv[])
      * queue of messages when the worker thread has completed.  For now
      * we'll try the raw socket approach */
 
+    playerTableLock = malloc(sizeof(uv_rwlock_t));
+    uv_rwlock_init(playerTableLock);
+
+    /* Hopefully no collisions on playersByNames */
+    playersById = g_hash_table_new(NULL, NULL);
+    playersByNames = g_hash_table_new(g_str_hash, NULL);
+
     uv_loop_t *loop = uv_default_loop();
     uv_udp_init(loop, &g_recv_sock);
     uv_idle_t idler;
     uv_idle_init(loop, &idler);
     uv_idle_start(&idler, idler_task);
-    //uv_udp_init(loop, &g_send_sock);
     struct sockaddr_in recaddr;
+
+    uv_timer_t timer_req;
+    uv_timer_t timer_req2;
+
+    uv_timer_init(loop, &timer_req);
+    uv_timer_init(loop, &timer_req2);
+    uv_timer_start(&timer_req, printPlayers, 50000, 50000);
+    uv_timer_start(&timer_req2, killPlayers, 80000, 80000);
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
     uv_udp_bind(&g_recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);

@@ -8,7 +8,7 @@ cflags = '-m64 -I/usr/local/include'
 linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
 
 ntetris_cfiles = ['tetris.c', ]
-ntetris_srv_files = ['tetris_serv.c', 'packet.c' ]
+ntetris_srv_files = ['tetris_serv.c', 'packet.c', 'player.c' ]
 
 if sys.platform == "darwin":
    pkg_config_cmd = '/opt/local/bin/pkg-config'

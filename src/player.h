@@ -1,7 +1,11 @@
 #pragma once
 
+#include <sys/socket.h>
+
 /* These represent all the various possible states the player
- * can be represented by in the somewhat simple game state machine */
+ * can be represented by in the somewhat simple game state machine.
+ * It's possible to ++ the enum to advance to the next state but
+ * I'm not sure that this is very explicit or obvious */
 typedef enum _PLAYER_STATE {
     AWAITING_CLIENT_ACK, /* Waiting to validate */
     BROWSING_ROOMS, /* Client requested rooms list */
@@ -12,13 +16,14 @@ typedef enum _PLAYER_STATE {
 
 typedef struct _player_t {
     uint64_t lastpkt_ts; /* The ms/ns timestamp of last command packet */ 
-    int32_t secBeforeNextPingMax; /* max seconds before next ping */
-    uint32_t playerId;  /* The unique playerId */
-    uint32_t curJoinedRoomId; /* The room the player is in */
+    int secBeforeNextPingMax; /* max seconds before next ping */
+    unsigned int playerId;  /* The unique playerId */
+    unsigned int curJoinedRoomId; /* The room the player is in */
     struct sockaddr playerAddr; /* Their IP + port combo */
-    PLAYER_STATE state;
+    PLAYER_STATE state; /* We could ++ to advance to next state */
     char *name; /* The player's name */
 } player_t;
 
-player_t *createPlayer(const char *name, struct sockaddr sock);
+player_t *createPlayer(const char *name, uint16_t nameLen, 
+                       struct sockaddr sock, unsigned int id);
 void *destroyPlayer(player_t *p);

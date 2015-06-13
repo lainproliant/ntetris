@@ -45,7 +45,7 @@ typedef enum _ERROR_CODE {
    BAD_LEN = 3, /* Invalid packet length */
    BAD_PROTOCOL = 4, /* Protocol version not PROTOCOL_VERSION */
    BAD_NAME = 5, /* The user's namestr is too long or stupid */
-   BAD_ROOM_NAME = 6,
+   BAD_ROOM_NAME = 6, /* The user room name is too long or stupid */
    SUCCESS = 7, /* Just here for debugging the replies, will remove */
    NUM_ERR_CODES
 } ERR_CODE;
