@@ -78,9 +78,16 @@ void printPlayer(gpointer k, gpointer v, gpointer d)
 
 void printPlayers(uv_timer_t *h)
 {
-    PRINT("PlayerList = \n");
     uv_rwlock_rdlock(playerTableLock);
-    g_hash_table_foreach(playersById, (GHFunc)printPlayer, NULL);
+
+    if (g_hash_table_size(playersById) == 0) {
+        PRINT("[0 players found]\n");
+    } else {
+        PRINT("PlayerList = \n");
+        g_hash_table_foreach(playersById, 
+            (GHFunc)printPlayer, NULL);
+    }
+    
     uv_rwlock_rdunlock(playerTableLock);
 }
 
@@ -113,10 +120,12 @@ void updateWin()
 
 void parse_cmd(const char *cmd)
 {
-    const char *srvcmd = strsep(&cmd, " "); 
+    const char *srvcmd = strsep(&cmd, " \n");
 
-    if (srvcmd != NULL) {
-        PRINT("Parsed cmd %s\n", srvcmd);
+    if (!strncmp(srvcmd, "lsplayers", 9)) {
+        printPlayers(NULL);
+    } else {
+        //PRINT("srvcmd = [%s]\n", srvcmd);
     }
 }
 
@@ -132,10 +141,9 @@ void on_type(uv_fs_t *req)
      * callback fires once the descriptor closes for some reason */
     if (req->result > 0) {
         //ioVec.len = req->result;
-        //PRINT("USER TYPED: %s", buffer);
         parse_cmd(buffer);
         uv_fs_read(uv_default_loop(), &stdin_watcher, 0, &ioVec, 1, -1, on_type);
-        memset(buffer, 0, sizeof(buffer));
+        memset(buffer, 0, strlen(buffer));
     }
 }
 
@@ -416,17 +424,18 @@ int main(int argc, char *argv[])
     uv_idle_start(&idler, idler_task);
 
     ioVec = uv_buf_init(buffer, 200);
+    memset(buffer, 0, sizeof(buffer));
     struct sockaddr_in recaddr;
 
     uv_fs_read(loop, &stdin_watcher, 0, &ioVec, 1, -1, on_type);
 
     /* TODO: remove these, they are for testing */
-    uv_timer_t timer_req;
+    //uv_timer_t timer_req;
     uv_timer_t timer_req2;
 
-    uv_timer_init(loop, &timer_req);
+    //uv_timer_init(loop, &timer_req);
     uv_timer_init(loop, &timer_req2);
-    uv_timer_start(&timer_req, printPlayers, 50000, 50000);
+    //uv_timer_start(&timer_req, printPlayers, 50000, 50000);
     uv_timer_start(&timer_req2, killPlayers, 80000, 80000);
     /* end remove */
 
