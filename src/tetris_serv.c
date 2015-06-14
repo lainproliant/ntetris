@@ -79,11 +79,12 @@ void printPlayer(gpointer k, gpointer v, gpointer d)
 void printPlayers(uv_timer_t *h)
 {
     uv_rwlock_rdlock(playerTableLock);
+    size_t numPlayers = g_hash_table_size(playersById);
 
-    if (g_hash_table_size(playersById) == 0) {
+    if (numPlayers == 0) {
         PRINT("[0 players found]\n");
     } else {
-        PRINT("PlayerList = \n");
+        PRINT("PlayerList (%lu players) = \n", numPlayers);
         g_hash_table_foreach(playersById, 
             (GHFunc)printPlayer, NULL);
     }
@@ -118,14 +119,70 @@ void updateWin()
     wrefresh(mainWindow);
 }
 
+void kickPlayerByName(const char *name) 
+{
+    uv_rwlock_wrlock(playerTableLock);
+    player_t *p = NULL;
+    p = g_hash_table_lookup(playersByNames, name);
+
+    if (p == NULL) {
+        WARNING("Player %s not found", name);
+    } else {
+        // kick packet logic goes here 
+        g_hash_table_remove(playersByNames, name);
+        g_hash_table_remove(playersById, p->playerId);
+        PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
+        destroyPlayer(p);
+    }
+
+    uv_rwlock_wrunlock(playerTableLock);
+}
+
+void kickPlayerById(uint32_t id) 
+{
+    uv_rwlock_wrlock(playerTableLock);
+    player_t *p = NULL;
+    p = g_hash_table_lookup(playersById, id);
+
+    if (p == NULL) {
+        WARNING("Player id: %d not found", id);
+    } else {
+        // kick packet logic goes here 
+        g_hash_table_remove(playersByNames, p->name);
+        g_hash_table_remove(playersById, p->playerId);
+        PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
+        destroyPlayer(p);
+    }
+
+    uv_rwlock_wrunlock(playerTableLock);
+}
+
 void parse_cmd(const char *cmd)
 {
+    const char *stn_err_str= NULL;
+    const char *pNameOrId;
     const char *srvcmd = strsep(&cmd, " \n");
+    int id;
 
     if (!strncmp(srvcmd, "lsplayers", 9)) {
         printPlayers(NULL);
+    } else if (!strncmp(srvcmd, "kickname", 8)) {
+        pNameOrId = strsep(&cmd, "\n");
+        kickPlayerByName(pNameOrId);
+    } else if (!strncmp(srvcmd, "kickid", 6)) {
+        pNameOrId = strsep(&cmd, "\n");
+        id = strtonum(pNameOrId, 0, UINT32_MAX, &stn_err_str);
+
+        if (stn_err_str) {
+            WARNING("Can't parse uid %s: %s", pNameOrId, stn_err_str);
+        } else {
+            kickPlayerById(id);
+        }
+
+    } else if (!strncmp(srvcmd, "kickidreason", 11)) {
+         
     } else {
-        //PRINT("srvcmd = [%s]\n", srvcmd);
+        WARNING("command %s not recognized", srvcmd);
     }
 }
 
