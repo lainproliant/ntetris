@@ -130,7 +130,7 @@ void kickPlayerByName(const char *name)
     } else {
         // kick packet logic goes here 
         g_hash_table_remove(playersByNames, name);
-        g_hash_table_remove(playersById, p->playerId);
+        g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
         destroyPlayer(p);
     }
@@ -138,18 +138,18 @@ void kickPlayerByName(const char *name)
     uv_rwlock_wrunlock(playerTableLock);
 }
 
-void kickPlayerById(uint32_t id) 
+void kickPlayerById(unsigned int id) 
 {
     uv_rwlock_wrlock(playerTableLock);
     player_t *p = NULL;
-    p = g_hash_table_lookup(playersById, id);
+    p = g_hash_table_lookup(playersById, GINT_TO_POINTER(id));
 
     if (p == NULL) {
         WARNING("Player id: %d not found", id);
     } else {
         // kick packet logic goes here 
         g_hash_table_remove(playersByNames, p->name);
-        g_hash_table_remove(playersById, p->playerId);
+        g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
         destroyPlayer(p);
     }
@@ -162,7 +162,7 @@ void parse_cmd(const char *cmd)
     const char *stn_err_str= NULL;
     const char *pNameOrId;
     const char *srvcmd = strsep(&cmd, " \n");
-    int id;
+    unsigned int id;
 
     if (!strncmp(srvcmd, "lsplayers", 9)) {
         printPlayers(NULL);
@@ -171,6 +171,12 @@ void parse_cmd(const char *cmd)
         kickPlayerByName(pNameOrId);
     } else if (!strncmp(srvcmd, "kickid", 6)) {
         pNameOrId = strsep(&cmd, "\n");
+
+        if (pNameOrId == NULL || strlen(pNameOrId) == 0) {
+            WARN("Syntax: kickid <userid>");
+            return;
+        }
+
         id = strtonum(pNameOrId, 0, UINT32_MAX, &stn_err_str);
 
         if (stn_err_str) {
