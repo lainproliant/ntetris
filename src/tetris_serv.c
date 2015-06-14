@@ -187,6 +187,8 @@ void parse_cmd(const char *cmd)
 
     } else if (!strncmp(srvcmd, "kickidreason", 11)) {
          
+    } else if (!strncmp(srvcmd, "kickall", 6)) {
+        killPlayers(NULL);       
     } else {
         WARNING("command %s not recognized", srvcmd);
     }
