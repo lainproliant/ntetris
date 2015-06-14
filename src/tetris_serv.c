@@ -26,8 +26,11 @@
 #define DEFAULT_PORT 48879
 
 static uv_udp_t g_recv_sock;
+static uv_fs_t stdin_watcher;
 
 static int vanillaSock;
+static char buffer[200];
+static uv_buf_t ioVec;
 int row, col;
 static WINDOW *mainWindow = NULL;
 
@@ -69,7 +72,8 @@ uint32_t genPlayerId()
 void printPlayer(gpointer k, gpointer v, gpointer d)
 {
     player_t *p = (player_t*)v;
-    PRINT("\t%s [id=%u, ptr=%p]\n", p->name, p->playerId, p);
+    PRINT("\t%s [id=" BOLDRED "%u" 
+            RESET", ptr=%p]\n", p->name, p->playerId, p);
 }
 
 void printPlayers(uv_timer_t *h)
@@ -105,6 +109,34 @@ void updateWin()
     mainWindow = newwin(row - 1, col, 0, 0);
     box(mainWindow, 0, 0);
     wrefresh(mainWindow);
+}
+
+void parse_cmd(const char *cmd)
+{
+    const char *srvcmd = strsep(&cmd, " "); 
+
+    if (srvcmd != NULL) {
+        PRINT("Parsed cmd %s\n", srvcmd);
+    }
+}
+
+void on_type(uv_fs_t *req)
+{
+    /* This is a seemingly backward-ass way to process stdin, but I'm
+     * not sure the correct way to do this with libuv callbacks.  There
+     * is an eample in the documentation that alternatively uses the
+     * pipe reader and stream_t for libuv, but the docs say that the
+     * program does not always work.  And I'd rather parse stdin directly
+     * rather than duplicate things to pipe and have to deal with SIGPIPE.
+     * the having to set the callback again is weird, I assume after the
+     * callback fires once the descriptor closes for some reason */
+    if (req->result > 0) {
+        //ioVec.len = req->result;
+        //PRINT("USER TYPED: %s", buffer);
+        parse_cmd(buffer);
+        uv_fs_read(uv_default_loop(), &stdin_watcher, 0, &ioVec, 1, -1, on_type);
+        memset(buffer, 0, sizeof(buffer));
+    }
 }
 
 void init_curses()
@@ -312,7 +344,6 @@ void onrecv(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,
     char senderIP[20] = { 0 };
     uv_ip4_name((const struct sockaddr_in*)addr, senderIP, 19);
     in_port_t port = ((const struct sockaddr_in*)addr)->sin_port;
-    //fprintf(stderr, "Received msg over %s:%d\n", senderIP, port);
 
     uv_work_t *work = (uv_work_t*)malloc(sizeof(uv_work_t));
 
@@ -383,7 +414,11 @@ int main(int argc, char *argv[])
     uv_idle_t idler;
     uv_idle_init(loop, &idler);
     uv_idle_start(&idler, idler_task);
+
+    ioVec = uv_buf_init(buffer, 200);
     struct sockaddr_in recaddr;
+
+    uv_fs_read(loop, &stdin_watcher, 0, &ioVec, 1, -1, on_type);
 
     /* TODO: remove these, they are for testing */
     uv_timer_t timer_req;
