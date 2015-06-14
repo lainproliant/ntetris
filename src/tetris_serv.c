@@ -190,7 +190,7 @@ void on_type(uv_fs_t *req)
 {
     /* This is a seemingly backward-ass way to process stdin, but I'm
      * not sure the correct way to do this with libuv callbacks.  There
-     * is an eample in the documentation that alternatively uses the
+     * is an example in the documentation that alternatively uses the
      * pipe reader and stream_t for libuv, but the docs say that the
      * program does not always work.  And I'd rather parse stdin directly
      * rather than duplicate things to pipe and have to deal with SIGPIPE.
