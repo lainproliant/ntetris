@@ -185,7 +185,8 @@ void kickPlayerById(unsigned int id, const char *reason)
 void parse_cmd(const char *cmd)
 {
     const char *stn_err_str= NULL;
-    const char *pNameOrId;
+    const char *pNameOrId = NULL;
+    const char *reason = NULL;
     const char *srvcmd = strsep(&cmd, " \n");
     unsigned int id;
 
@@ -194,6 +195,31 @@ void parse_cmd(const char *cmd)
     } else if (!strncmp(srvcmd, "kickname", 8)) {
         pNameOrId = strsep(&cmd, "\n");
         kickPlayerByName(pNameOrId);
+    } else if (!strncmp(srvcmd, "kickidreason", 11)) {
+        pNameOrId = strsep(&cmd, " ");
+
+        if (pNameOrId == NULL || strlen(pNameOrId) == 0) {
+            WARN("Syntax: kickidreason <userid> <reason>");
+            return;
+        }
+
+        reason = strsep(&cmd, "\n");
+
+        if (reason == NULL || strlen(reason) == 0) {
+            WARN("Syntax: kickidreason <userid> <reason>");
+            return;
+        }
+
+        PRINT("reason = %s\n", reason);
+        id = strtonum(pNameOrId, 0, UINT32_MAX, &stn_err_str);
+
+        if (stn_err_str) {
+            WARNING("Can't parse uid %s: %s", pNameOrId, stn_err_str);
+        } else {
+            kickPlayerById(id, reason);
+        }
+    } else if (!strncmp(srvcmd, "kickall", 6)) {
+        killPlayers(NULL);       
     } else if (!strncmp(srvcmd, "kickid", 6)) {
         pNameOrId = strsep(&cmd, "\n");
 
@@ -209,11 +235,6 @@ void parse_cmd(const char *cmd)
         } else {
             kickPlayerById(id, NULL);
         }
-
-    } else if (!strncmp(srvcmd, "kickidreason", 11)) {
-         
-    } else if (!strncmp(srvcmd, "kickall", 6)) {
-        killPlayers(NULL);       
     } else {
         WARNING("command %s not recognized", srvcmd);
     }
