@@ -124,6 +124,9 @@ void kickPlayerByName(const char *name)
     uv_rwlock_wrlock(playerTableLock);
     player_t *p = NULL;
     p = g_hash_table_lookup(playersByNames, name);
+    uint8_t kickBufMsg[sizeof(packet_t) + sizeof(msg_kick_client)];
+    packet_t *m = kickBufMsg;
+    msg_kick_client *mcast = m->data;
 
     if (p == NULL) {
         WARNING("Player %s not found", name);
@@ -132,26 +135,48 @@ void kickPlayerByName(const char *name)
         g_hash_table_remove(playersByNames, name);
         g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
+
+        mcast->reasonLength = 0;
+        mcast->kickStatus = KICKED;
+        reply(m, sizeof(m), &p->playerAddr, vanillaSock);
+
         destroyPlayer(p);
     }
 
     uv_rwlock_wrunlock(playerTableLock);
 }
 
-void kickPlayerById(unsigned int id) 
+void kickPlayerById(unsigned int id, const char *reason)
 {
     uv_rwlock_wrlock(playerTableLock);
     player_t *p = NULL;
+    packet_t *m = NULL;
+    msg_kick_client *mcast = NULL;
     p = g_hash_table_lookup(playersById, GINT_TO_POINTER(id));
 
     if (p == NULL) {
-        WARNING("Player id: %d not found", id);
+        WARNING("Player id: %u not found", id);
     } else {
-        // kick packet logic goes here 
         g_hash_table_remove(playersByNames, p->name);
         g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
+
+        if (reason != NULL) {
+            m = malloc(sizeof(packet_t) + sizeof(msg_kick_client) + 
+                        strlen(reason));
+            mcast = m->data;
+            mcast->reasonLength = strlen(reason);
+            memcpy(mcast->reason, reason, strlen(reason));
+        } else {
+            m = malloc(sizeof(packet_t) + sizeof(msg_kick_client));
+            mcast = m->data;
+            mcast->reasonLength = 0;
+        }
+
+        mcast->kickStatus = KICKED;
+        reply(m, sizeof(m), &p->playerAddr, vanillaSock);
         destroyPlayer(p);
+        free(m);
     }
 
     uv_rwlock_wrunlock(playerTableLock);
@@ -182,7 +207,7 @@ void parse_cmd(const char *cmd)
         if (stn_err_str) {
             WARNING("Can't parse uid %s: %s", pNameOrId, stn_err_str);
         } else {
-            kickPlayerById(id);
+            kickPlayerById(id, NULL);
         }
 
     } else if (!strncmp(srvcmd, "kickidreason", 11)) {
