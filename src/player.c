@@ -19,7 +19,7 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
     PRINT("Creating player (%u, %s)\n", id, p->name);
 
     p->state = AWAITING_CLIENT_ACK;
-    p->secBeforeNextPingMax = 20;
+    p->secBeforeNextPingMax = 40;
     p->curJoinedRoomId = 0;
     p->playerAddr = sock;
 

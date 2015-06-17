@@ -30,14 +30,12 @@ typedef struct _request {
     struct sockaddr from;
 } request;
 
-
 static uv_udp_t g_recv_sock;
 static uv_fs_t stdin_watcher;
 
 static int vanillaSock;
 static char buffer[200];
 static uv_buf_t ioVec;
-int row, col;
 
 /* This will be the source of randomness, in solaris /dev/urandom
  * is non-blocking but under the hood should use KCF for secure
@@ -72,44 +70,6 @@ uint32_t genPlayerId()
     } while (g_hash_table_lookup(playersById, GINT_TO_POINTER(retVal)));
 
     return retVal;
-}
-
-void printPlayer(gpointer k, gpointer v, gpointer d)
-{
-    player_t *p = (player_t*)v;
-    PRINT("\t%s [id=" BOLDRED "%u" 
-            RESET", ptr=%p]\n", p->name, p->playerId, p);
-}
-
-void printPlayers(uv_timer_t *h)
-{
-    uv_rwlock_rdlock(playerTableLock);
-    size_t numPlayers = g_hash_table_size(playersById);
-
-    if (numPlayers == 0) {
-        PRINT("[0 players found]\n");
-    } else {
-        PRINT("PlayerList (%lu players) = \n", numPlayers);
-        g_hash_table_foreach(playersById, 
-            (GHFunc)printPlayer, NULL);
-    }
-    
-    uv_rwlock_rdunlock(playerTableLock);
-}
-
-void gh_freeplayer(gpointer k, gpointer v, gpointer d)
-{
-    player_t *p = (player_t*)v;
-    destroyPlayer(p);
-}
-
-void killPlayers(uv_timer_t *h)
-{
-    uv_rwlock_wrlock(playerTableLock);
-    g_hash_table_foreach(playersById, (GHFunc)gh_freeplayer, NULL);
-    g_hash_table_remove_all(playersById);
-    g_hash_table_remove_all(playersByNames);
-    uv_rwlock_wrunlock(playerTableLock);
 }
 
 void kickPlayerByName(const char *name) 
@@ -175,6 +135,94 @@ void kickPlayerById(unsigned int id, const char *reason)
     uv_rwlock_wrunlock(playerTableLock);
 }
 
+void printPlayer(gpointer k, gpointer v, gpointer d)
+{
+    player_t *p = (player_t*)v;
+    PRINT("\t%s [id=" BOLDRED "%u" 
+            RESET", ptr=%p, to=%d]\n", p->name,
+                                       p->playerId,
+                                       p, p->secBeforeNextPingMax);
+}
+
+void printPlayers()
+{
+    uv_rwlock_rdlock(playerTableLock);
+    size_t numPlayers = g_hash_table_size(playersById);
+
+    if (numPlayers == 0) {
+        PRINT("[0 players found]\n");
+    } else {
+        PRINT("PlayerList (%lu players) = \n", numPlayers);
+        g_hash_table_foreach(playersById, 
+            (GHFunc)printPlayer, NULL);
+    }
+    
+    uv_rwlock_rdunlock(playerTableLock);
+}
+
+gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
+{
+    packet_t *m = NULL;
+    msg_kick_client *mcast = NULL;
+    const char *kickMsg = "Stale connection";
+    uint8_t kickBufMsg[sizeof(packet_t) + 
+                       sizeof(msg_kick_client) +
+                       strlen(kickMsg)];
+    player_t *p = (player_t*)v;
+    p->secBeforeNextPingMax -= GPOINTER_TO_INT(d);
+
+    if (p->secBeforeNextPingMax <= 0) {
+        m = (packet_t*)kickBufMsg;
+        mcast = m->data;
+        mcast->reasonLength = strlen(kickMsg);
+        memcpy(mcast->reason, kickMsg, strlen(kickMsg));
+        mcast->kickStatus = KICKED;
+        reply(m, sizeof(m), &p->playerAddr, vanillaSock);
+
+        /* Remove from the other hashtable before freeing */
+        g_hash_table_remove(playersByNames, p->name);
+
+        destroyPlayer(p);
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+void expireStaleUsers(uv_timer_t *h)
+{
+    /* Every 15 seconds, look for users that haven't
+     * sent a PING message.  Do this by subtracting
+     * 15 from the secBeforeNextPingMax.  The client
+     * can send a PING every 10 seconds.  This way if
+     * we miss a PING message we aren't likely to drop
+     * them unfairly.  The steal or remove foreach functions
+     * here are the only safe way to do this without messing
+     * up the data structure in a foreach.  An iterator would
+     * have been another option */
+    uv_rwlock_wrlock(playerTableLock);
+    g_hash_table_foreach_steal(playersById,
+                              (GHRFunc)gh_subtractSeconds, 
+                              h->repeat / 1000);
+    uv_rwlock_wrunlock(playerTableLock);
+}
+
+void gh_freeplayer(gpointer k, gpointer v, gpointer d)
+{
+    player_t *p = (player_t*)v;
+    destroyPlayer(p);
+}
+
+void killPlayers(uv_timer_t *h)
+{
+    uv_rwlock_wrlock(playerTableLock);
+    g_hash_table_foreach(playersById, (GHFunc)gh_freeplayer, NULL);
+    g_hash_table_remove_all(playersById);
+    g_hash_table_remove_all(playersByNames);
+    uv_rwlock_wrunlock(playerTableLock);
+}
+
 void parse_cmd(const char *cmd)
 {
     const char *stn_err_str= NULL;
@@ -203,7 +251,6 @@ void parse_cmd(const char *cmd)
             return;
         }
 
-        PRINT("reason = %s\n", reason);
         id = strtonum(pNameOrId, 0, UINT32_MAX, &stn_err_str);
 
         if (stn_err_str) {
@@ -253,6 +300,7 @@ void on_type(uv_fs_t *req)
 
 void idler_task(uv_idle_t *handle)
 {
+
 }
 
 void handle_msg(uv_work_t *req)
@@ -497,13 +545,13 @@ int main(int argc, char *argv[])
     uv_fs_read(loop, &stdin_watcher, 0, &ioVec, 1, -1, on_type);
 
     /* TODO: remove these, they are for testing */
-    //uv_timer_t timer_req;
-    uv_timer_t timer_req2;
+    uv_timer_t timer_req;
+    //uv_timer_t timer_req2;
 
-    //uv_timer_init(loop, &timer_req);
-    uv_timer_init(loop, &timer_req2);
-    //uv_timer_start(&timer_req, printPlayers, 50000, 50000);
-    uv_timer_start(&timer_req2, killPlayers, 80000, 80000);
+    uv_timer_init(loop, &timer_req);
+    //uv_timer_init(loop, &timer_req2);
+    uv_timer_start(&timer_req, expireStaleUsers, 15000, 15000);
+    //uv_timer_start(&timer_req2, killPlayers, 80000, 80000);
     /* end remove */
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
