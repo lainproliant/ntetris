@@ -1,6 +1,7 @@
 #include "player.h"
 #include "macros.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifdef __linux__
 #include <bsd/string.h>

@@ -7,9 +7,6 @@
 #include <ctype.h>
 #include <sys/socket.h>
 
-/* Nothing sloppier than sweet sweet errno-like techniques :) */
-extern WINDOW *mainWindow;
-
 void createErrPacket(packet_t *ret, ERR_CODE e)
 {
     ret->type = (uint8_t)ERR_PACKET;

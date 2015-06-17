@@ -23,37 +23,6 @@
 #define WARNCOLOR 11
 #define ERRCOLOR 22
 
-#include <ncurses.h>
-
-#ifdef NCURSES
-
-#define ERROR(fmt, ...) \
-        do { \
-            int row, col;\
-            getyx(mainWindow, row, col);\
-            wattrset(mainWindow, A_BOLD | COLOR_PAIR(ERRCOLOR)); \
-            mvwprintw(mainWindow, row, col+1, "[ERROR] %s:%d:%s(): " fmt "\n", __FILE__,\
-                     __LINE__, __func__, ##__VA_ARGS__); exit(-1); \
-            wattrset(mainWindow, A_NORMAL); \
-        } while (0)
-
-#define WARNING(fmt, ...) \
-        do { \
-            int row, col;\
-            getyx(mainWindow, row, col);\
-            wattrset(mainWindow, A_BOLD | COLOR_PAIR(WARNCOLOR)); \
-            mvwprintw(mainWindow, row, col+1, "[WARNING] %s:%d:%s(): " fmt "\n",\
-                    __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
-            wattrset(mainWindow, A_NORMAL); \
-        } while (0)
-
-#define PRINT(...) do { \
-        int row, col; \
-        getyx(mainWindow, row, col); \
-        mvwprintw(mainWindow, row, col+2, __VA_ARGS__); \
-    } while(0)
-#else
-
 #define ERROR(fmt, ...) \
         do { \
             fprintf(stderr, BOLDRED "[ERROR] %s:%d:%s(): " fmt "\n" RESET, __FILE__, \
@@ -66,9 +35,6 @@
         } while (0)
 
 #define PRINT(...) printf(__VA_ARGS__)
-#endif
-
-
 
 #define WARN(msg) WARNING("%s", msg);
 #define ERRMSG(msg) ERROR("%s", msg);

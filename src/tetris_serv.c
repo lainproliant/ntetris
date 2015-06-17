@@ -5,7 +5,6 @@
 #include <getopt.h>
 #include <strings.h>
 #include <string.h>
-#include <ncurses.h>
 #include <glib.h>
 
 #ifdef __sun
@@ -25,6 +24,13 @@
 
 #define DEFAULT_PORT 48879
 
+typedef struct _request {
+    ssize_t len;
+    void *payload;
+    struct sockaddr from;
+} request;
+
+
 static uv_udp_t g_recv_sock;
 static uv_fs_t stdin_watcher;
 
@@ -32,7 +38,6 @@ static int vanillaSock;
 static char buffer[200];
 static uv_buf_t ioVec;
 int row, col;
-static WINDOW *mainWindow = NULL;
 
 /* This will be the source of randomness, in solaris /dev/urandom
  * is non-blocking but under the hood should use KCF for secure
@@ -105,18 +110,6 @@ void killPlayers(uv_timer_t *h)
     g_hash_table_remove_all(playersById);
     g_hash_table_remove_all(playersByNames);
     uv_rwlock_wrunlock(playerTableLock);
-}
-
-void updateWin()
-{
-    /* Set the cursor back to the origins of the window */
-    rewind(stdout);
-    getmaxyx(stdscr, row, col);
-    delwin(mainWindow);
-    mainWindow = NULL;
-    mainWindow = newwin(row - 1, col, 0, 0);
-    box(mainWindow, 0, 0);
-    wrefresh(mainWindow);
 }
 
 void kickPlayerByName(const char *name) 
@@ -258,41 +251,8 @@ void on_type(uv_fs_t *req)
     }
 }
 
-void init_curses()
-{
-    /* initialize the ncurses screen */
-    initscr();
-    getmaxyx(stdscr, row, col);
-    mainWindow = newwin(row, col, 0, 0);
-    box(mainWindow, 0, 0);
-    wmove(mainWindow, 1, 1);
-    /*noecho();
-    raw();*/
-
-    if (has_colors()) {
-        start_color();
-        use_default_colors();
-        init_pair(WARNCOLOR, COLOR_YELLOW, COLOR_BLACK);
-        init_pair(ERRCOLOR, COLOR_RED, COLOR_BLACK);
-    } 
-
-    scrollok(mainWindow, true);
-}
-
-typedef struct _request {
-    ssize_t len;
-    void *payload;
-    struct sockaddr from;
-} request;
-
 void idler_task(uv_idle_t *handle)
 {
-    /* Refresh the ncurses screen */
-    if (mainWindow != NULL) {
-        //updateWin();
-        scrollok(mainWindow, true);
-        wrefresh(mainWindow);
-    }
 }
 
 void handle_msg(uv_work_t *req)
@@ -488,10 +448,6 @@ int main(int argc, char *argv[])
     int port = DEFAULT_PORT;
     const char *stn_err_str = NULL;
 
-#ifdef NCURSES
-    init_curses();
-#endif
-
     static struct option longopts[] = {
         {"port",      required_argument,     NULL,     'p'},
         {"random",      required_argument,     NULL,     'r'},
@@ -558,9 +514,6 @@ int main(int argc, char *argv[])
     uv_run(loop, UV_RUN_DEFAULT);
 
     /* state cleanup */
-#ifdef NCURSES
-    endwin();
-#endif
     uv_loop_close(uv_default_loop());
 
     return 0;
