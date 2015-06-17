@@ -30,7 +30,7 @@
         } while (0)
 
 #define WARNING(fmt, ...) \
-        do { fprintf(stderr, BOLDYELLOW "[WARNING] %s:%d:%s(): " fmt "\n" RESET, \
+        do { fprintf(stdout, BOLDYELLOW "[WARNING] %s:%d:%s(): " fmt "\n" RESET, \
                  __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
         } while (0)
 
