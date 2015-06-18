@@ -118,7 +118,7 @@ void kickPlayerById(unsigned int id, const char *reason)
             m = malloc(sizeof(packet_t) + sizeof(msg_kick_client) + 
                         strlen(reason));
             mcast = m->data;
-            mcast->reasonLength = strlen(reason);
+            mcast->reasonLength = htons(strlen(reason));
             memcpy(mcast->reason, reason, strlen(reason));
         } else {
             m = malloc(sizeof(packet_t) + sizeof(msg_kick_client));
@@ -174,7 +174,7 @@ gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
     if (p->secBeforeNextPingMax <= 0) {
         m = (packet_t*)kickBufMsg;
         mcast = m->data;
-        mcast->reasonLength = strlen(kickMsg);
+        mcast->reasonLength = htons(strlen(kickMsg));
         memcpy(mcast->reason, kickMsg, strlen(kickMsg));
         mcast->kickStatus = KICKED;
         reply(m, sizeof(m), &p->playerAddr, vanillaSock);
@@ -318,6 +318,7 @@ void handle_msg(uv_work_t *req)
     char *clientName = NULL;
     player_t *newPlayer = NULL;
     msg_reg_ack m_ack;
+    msg_reg_ack *m_recAck = NULL;
     char senderIP[20] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
@@ -426,6 +427,10 @@ name_collide:
                 return;
             }
 
+            break;
+
+        case REG_ACK:
+            m_recAck = (msg_reg_ack*)(pkt->data);
             break;
 
         default:
