@@ -78,8 +78,8 @@ void kickPlayerByName(const char *name)
     player_t *p = NULL;
     p = g_hash_table_lookup(playersByNames, name);
     uint8_t kickBufMsg[sizeof(packet_t) + sizeof(msg_kick_client)];
-    packet_t *m = kickBufMsg;
-    msg_kick_client *mcast = m->data;
+    packet_t *m = (packet_t*)kickBufMsg;
+    msg_kick_client *mcast = (msg_kick_client*)m->data;
 
     if (p == NULL) {
         WARNING("Player %s not found", name);
@@ -117,12 +117,12 @@ void kickPlayerById(unsigned int id, const char *reason)
         if (reason != NULL) {
             m = malloc(sizeof(packet_t) + sizeof(msg_kick_client) + 
                         strlen(reason));
-            mcast = m->data;
+            mcast = (msg_kick_client*)m->data;
             mcast->reasonLength = htons(strlen(reason));
             memcpy(mcast->reason, reason, strlen(reason));
         } else {
             m = malloc(sizeof(packet_t) + sizeof(msg_kick_client));
-            mcast = m->data;
+            mcast = (msg_kick_client*)m->data;
             mcast->reasonLength = 0;
         }
 
@@ -173,7 +173,7 @@ gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
 
     if (p->secBeforeNextPingMax <= 0) {
         m = (packet_t*)kickBufMsg;
-        mcast = m->data;
+        mcast = (msg_kick_client*)m->data;
         mcast->reasonLength = htons(strlen(kickMsg));
         memcpy(mcast->reason, kickMsg, strlen(kickMsg));
         mcast->kickStatus = KICKED;
@@ -228,23 +228,23 @@ void parse_cmd(const char *cmd)
     const char *stn_err_str= NULL;
     const char *pNameOrId = NULL;
     const char *reason = NULL;
-    const char *srvcmd = strsep(&cmd, " \n");
+    const char *srvcmd = strsep((char**)&cmd, " \n");
     unsigned int id;
 
     if (!strncmp(srvcmd, "lsplayers", 9)) {
         printPlayers(NULL);
     } else if (!strncmp(srvcmd, "kickname", 8)) {
-        pNameOrId = strsep(&cmd, "\n");
+        pNameOrId = strsep((char**)&cmd, "\n");
         kickPlayerByName(pNameOrId);
     } else if (!strncmp(srvcmd, "kickidreason", 11)) {
-        pNameOrId = strsep(&cmd, " ");
+        pNameOrId = strsep((char**)&cmd, " ");
 
         if (pNameOrId == NULL || strlen(pNameOrId) == 0) {
             WARN("Syntax: kickidreason <userid> <reason>");
             return;
         }
 
-        reason = strsep(&cmd, "\n");
+        reason = strsep((char**)&cmd, "\n");
 
         if (reason == NULL || strlen(reason) == 0) {
             WARN("Syntax: kickidreason <userid> <reason>");
@@ -261,7 +261,7 @@ void parse_cmd(const char *cmd)
     } else if (!strncmp(srvcmd, "kickall", 6)) {
         killPlayers(NULL);       
     } else if (!strncmp(srvcmd, "kickid", 6)) {
-        pNameOrId = strsep(&cmd, "\n");
+        pNameOrId = strsep((char**)&cmd, "\n");
 
         if (pNameOrId == NULL || strlen(pNameOrId) == 0) {
             WARN("Syntax: kickid <userid>");
@@ -324,8 +324,8 @@ void handle_msg(uv_work_t *req)
     /* Stack allocated buffer for the error message packet */
     uint8_t errPktBuf[ERRMSG_SIZE];
     uint8_t ackPackBuf[sizeof(packet_t) + sizeof(msg_reg_ack)];
-    packet_t *errPkt = errPktBuf;
-    packet_t *ackPack = ackPackBuf;
+    packet_t *errPkt = (packet_t*)errPktBuf;
+    packet_t *ackPack = (packet_t*)ackPackBuf;
     ssize_t ePktSize = -1;
 
     if ( PROTOCOL_VERSION != pkt->version ) {

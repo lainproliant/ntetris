@@ -15,7 +15,7 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
     p->playerId = id;
 
     /* name param is expected to not be NUL teriminated, this fixes that */
-    p->name = name;
+    p->name = (char*)name;
     PRINT("Creating player (%u, %s)\n", id, p->name);
 
     p->state = AWAITING_CLIENT_ACK;

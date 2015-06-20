@@ -5,6 +5,7 @@
 #include "macros.h"
 #include <errno.h>
 #include <ctype.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 
 void createErrPacket(packet_t *ret, ERR_CODE e)
@@ -129,10 +130,12 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
 bool validateName(msg_register_client *m)
 {
+    size_t i;
+
     if (m->nameLength > MAX_NAMELEN || m->nameLength == 0) {
         return false;
     } else {
-        for (size_t i = 0; i < m->nameLength; ++i) {
+        for (i = 0; i < m->nameLength; ++i) {
             if (!isprint(m->name[i])) {
                 return false;
             }
