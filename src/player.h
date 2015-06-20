@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/socket.h>
+#include <stdint.h>
 
 /* These represent all the various possible states the player
  * can be represented by in the somewhat simple game state machine.

@@ -18,6 +18,7 @@
 
 #ifdef __linux__
 #include <bsd/stdlib.h>
+#include <bsd/string.h>
 #endif
 
 #ifdef __sun

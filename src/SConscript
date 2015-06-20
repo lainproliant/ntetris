@@ -16,6 +16,7 @@ if sys.platform == "darwin":
 if 'linux' in sys.platform:
   liblist.append('bsd')
   srvliblist.append('bsd')
+  cflags += ' -std=gnu99'
 
 if 'sunos' in sys.platform:
   cflags = ' '.join((cflags, '-m64', '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s', '-xO5'))

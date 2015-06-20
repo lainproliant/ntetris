@@ -204,7 +204,7 @@ void expireStaleUsers(uv_timer_t *h)
     uv_rwlock_wrlock(playerTableLock);
     g_hash_table_foreach_steal(playersById,
                               (GHRFunc)gh_subtractSeconds, 
-                              h->repeat / 1000);
+                              GINT_TO_POINTER(h->repeat / 1000));
     uv_rwlock_wrunlock(playerTableLock);
 }
 
