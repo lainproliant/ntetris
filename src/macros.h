@@ -36,5 +36,5 @@
 
 #define PRINT(...) printf(__VA_ARGS__)
 
-#define WARN(msg) WARNING("%s", msg);
-#define ERRMSG(msg) ERROR("%s", msg);
+#define WARN(...) WARNING("%s", __VA_ARGS__);
+#define ERRMSG(...) ERROR("%s", __VA_ARGS__);

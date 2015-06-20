@@ -4,8 +4,8 @@ import sys
 pkg_config_cmd = "pkg-config"
 srvliblist = ['glib-2.0', 'uv']
 liblist = ['glib-2.0', 'ncurses']
-cflags = '-m64 -I/usr/local/include'
-linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
+cflags = '-I/usr/local/include'
+linkflags = '-L/usr/local/lib'
 
 ntetris_cfiles = ['tetris.c', ]
 ntetris_srv_files = ['tetris_serv.c', 'packet.c', 'player.c' ]
@@ -18,10 +18,11 @@ if 'linux' in sys.platform:
   srvliblist.append('bsd')
 
 if 'sunos' in sys.platform:
-  cflags = ' '.join((cflags, '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s', '-xO5'))
+  cflags = ' '.join((cflags, '-m64', '-I/usr/include/ncurses', '-features=extensions,typeof', '-xc99', '-xmemalign=1s', '-xO5'))
   ntetris_cfiles.append('strtonum.c')
   ntetris_srv_files.append('strtonum.c')
   srvliblist.extend(['socket', 'mtmalloc'])
+  linkflags = ' '.join(('-m64', '-L/usr/lib/64')) 
 
 env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
