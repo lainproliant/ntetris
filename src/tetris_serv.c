@@ -79,13 +79,13 @@ void pulsePlayer(msg_reg_ack *m)
 
     uv_rwlock_rdlock(playerTableLock);
     p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
-    uv_rwlock_rdunlock(playerTableLock);
 
     if (p != NULL) {
         p->secBeforeNextPingMax = 40; 
     } else {
         WARNING("Player with id %u not found, perhaps stale?", playerId);
     }
+    uv_rwlock_rdunlock(playerTableLock);
 }
 
 void kickPlayerByName(const char *name) 
@@ -451,7 +451,7 @@ name_collide:
             break;
 
         default:
-            WARN("Unhandled packet type!!!!\n");
+            WARN("Unhandled packet type!!!!");
             createErrPacket(errPkt, UNSUPPORTED_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             return;
