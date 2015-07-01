@@ -72,7 +72,7 @@ uint32_t genPlayerId()
     return retVal;
 }
 
-void pulsePlayer(msg_reg_ack *m)
+void pulsePlayer(msg_reg_ack *m, const struct sockaddr *from)
 {
     uint32_t playerId = ntohl(m->curPlayerId);
     player_t *p = NULL;
@@ -80,10 +80,16 @@ void pulsePlayer(msg_reg_ack *m)
     uv_rwlock_rdlock(playerTableLock);
     p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
 
-    if (p != NULL) {
+    /* Not sure this is a great way to compare addr, hopefully padding
+       isn't unitialized memory or something */
+    if (p != NULL && 
+        !memcmp(p->playerAddr.sa_data, 
+                from->sa_data,
+                sizeof(from->sa_data))) {
         p->secBeforeNextPingMax = 40; 
     } else {
-        WARNING("Player with id %u not found, perhaps stale?", playerId);
+        WARNING("Player with id %u not found or"
+                " message was sent from invalid addr", playerId);
     }
     uv_rwlock_rdunlock(playerTableLock);
 }
@@ -447,7 +453,7 @@ name_collide:
 
         case REG_ACK:
             m_recAck = (msg_reg_ack*)(pkt->data);
-            pulsePlayer(m_recAck);
+            pulsePlayer(m_recAck, &r->from);
             break;
 
         default:
