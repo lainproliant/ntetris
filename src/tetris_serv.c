@@ -67,9 +67,25 @@ uint32_t genPlayerId()
 
     do {
         retVal = getRand();
-    } while (g_hash_table_lookup(playersById, GINT_TO_POINTER(retVal)));
+    } while (g_hash_table_lookup(playersById, GUINT_TO_POINTER(retVal)));
 
     return retVal;
+}
+
+void pulsePlayer(msg_reg_ack *m)
+{
+    uint32_t playerId = ntohl(m->curPlayerId);
+    player_t *p = NULL;
+
+    uv_rwlock_rdlock(playerTableLock);
+    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
+    uv_rwlock_rdunlock(playerTableLock);
+
+    if (p != NULL) {
+        p->secBeforeNextPingMax = 40; 
+    } else {
+        WARNING("Player with id %u not found, perhaps stale?", playerId);
+    }
 }
 
 void kickPlayerByName(const char *name) 
@@ -86,7 +102,7 @@ void kickPlayerByName(const char *name)
     } else {
         // kick packet logic goes here 
         g_hash_table_remove(playersByNames, name);
-        g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
+        g_hash_table_remove(playersById, GUINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
 
         mcast->reasonLength = 0;
@@ -105,7 +121,7 @@ void kickPlayerById(unsigned int id, const char *reason)
     player_t *p = NULL;
     packet_t *m = NULL;
     msg_kick_client *mcast = NULL;
-    p = g_hash_table_lookup(playersById, GINT_TO_POINTER(id));
+    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
 
     if (p == NULL) {
         WARNING("Player id: %u not found", id);
@@ -431,6 +447,7 @@ name_collide:
 
         case REG_ACK:
             m_recAck = (msg_reg_ack*)(pkt->data);
+            pulsePlayer(m_recAck);
             break;
 
         default:
