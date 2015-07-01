@@ -72,9 +72,33 @@ uint32_t genPlayerId()
     return retVal;
 }
 
-void pulsePlayer(msg_reg_ack *m, const struct sockaddr *from)
+void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
 {
     uint32_t playerId = ntohl(m->curPlayerId);
+    player_t *p = NULL;
+
+    uv_rwlock_rdlock(playerTableLock);
+    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
+
+    /* Not sure this is a great way to compare addr, hopefully padding
+       isn't unitialized memory or something */
+    if (p != NULL && 
+        !memcmp(p->playerAddr.sa_data, 
+                from->sa_data,
+                sizeof(from->sa_data)) &&
+                p->state == AWAITING_CLIENT_ACK) {
+        p->state = BROWSING_ROOMS; 
+    } else {
+        WARNING("Player with id %u not found or"
+                " message was sent from invalid addr"
+                " or player was in inconsistent state", playerId);
+    }
+    uv_rwlock_rdunlock(playerTableLock);
+}
+
+void pulsePlayer(msg_ping *m, const struct sockaddr *from)
+{
+    uint32_t playerId = ntohl(m->playerId);
     player_t *p = NULL;
 
     uv_rwlock_rdlock(playerTableLock);
@@ -341,6 +365,7 @@ void handle_msg(uv_work_t *req)
     player_t *newPlayer = NULL;
     msg_reg_ack m_ack;
     msg_reg_ack *m_recAck = NULL;
+    msg_ping *m_recPing = NULL;
     char senderIP[20] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
@@ -453,8 +478,14 @@ name_collide:
 
         case REG_ACK:
             m_recAck = (msg_reg_ack*)(pkt->data);
-            pulsePlayer(m_recAck, &r->from);
+            regPlayer(m_recAck, &r->from);
             break;
+
+        case PING:
+            m_recPing = (msg_ping*)(pkt->data);
+            pulsePlayer(m_recPing, &r->from);
+            break;
+
 
         default:
             WARN("Unhandled packet type!!!!");
