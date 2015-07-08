@@ -56,7 +56,12 @@ only call this to a faster PRNG after so many calls */
 uint32_t getRand()
 {
     uint32_t retVal = 0;
-    fread(&retVal, sizeof(uint32_t), 1, randFile);
+    size_t bRead = fread(&retVal, sizeof(uint32_t), 1, randFile);
+    
+    if (bRead != sizeof(uint32_t)) {
+        ERRMSG("Error reading bytes from random file");
+    }
+
     return retVal;
 }
 
