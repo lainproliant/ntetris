@@ -1,3 +1,8 @@
+#pragma once
+
+#ifndef __TETRIS_H
+#define __TETRIS_H
+
 /*
  * ntetris: a tetris clone
  * (c) 2008 Lee Supe (lain_proliant)
@@ -178,4 +183,4 @@ void CarouselPrint(STATE*, WINDOW*, int, int, int, const char*);
 int Power(int, int);
 int KeyParse(const char*);
 
-
+#endif

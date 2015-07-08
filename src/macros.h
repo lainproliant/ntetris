@@ -1,4 +1,7 @@
 #pragma once
+
+#ifndef __MACROS_H
+#define __MACROS_H
 /* warning and error macros */
 
 /* The proper way to do this is probably terminal control sequences :-/ */
@@ -38,3 +41,5 @@
 
 #define WARN(...) WARNING("%s", __VA_ARGS__);
 #define ERRMSG(...) ERROR("%s", __VA_ARGS__);
+
+#endif
