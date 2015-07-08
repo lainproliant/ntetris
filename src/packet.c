@@ -65,7 +65,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
         /* Handling of variable length fields */
         case UPDATE_CLIENT_STATE:
-            if (len < sizeof(msg_update_client_state)) {
+            if (len < sizeof(msg_update_client_state) + totalBytes) {
                 return false;
             }
 
@@ -74,7 +74,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
                 upClient->nLinesChanged * sizeof(uint16_t); 
             break;
         case CREATE_ROOM:
-            if (len < sizeof(msg_create_room)) {
+            if (len < sizeof(msg_create_room) + totalBytes) {
                 return false;
             }
 
@@ -84,7 +84,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
                 croom->passLen * sizeof(char);
             break;
         case REGISTER_CLIENT:
-            if (len < sizeof(msg_register_client)) {
+            if (len < sizeof(msg_register_client) + totalBytes) {
                 return false;
             }
 
@@ -93,7 +93,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
                 rclient->nameLength * sizeof(char);
             break;
         case KICK_CLIENT:
-            if (len < sizeof(msg_kick_client)) {
+            if (len < sizeof(msg_kick_client) + totalBytes) {
                 return false;
             }
 
@@ -102,7 +102,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
                 ntohs(kclient->reasonLength) * sizeof(char);
             break;
         case JOIN_ROOM:
-            if (len < sizeof(msg_join_room)) {
+            if (len < sizeof(msg_join_room) + totalBytes) {
                 return false;
             }
 
@@ -111,7 +111,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
                 ntohs(jroom->passwordLen) * sizeof(char);
             break;
         case ROOM_ANNOUNCE:
-            if (len < sizeof(msg_room_announce)) {
+            if (len < sizeof(msg_room_announce) + totalBytes) {
                 return false;
             }
 

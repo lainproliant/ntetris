@@ -3,9 +3,10 @@
 import struct
 import socket
 import sys
+import random
 import time
 
-REGISTER_TETRAD = 0 
+REGISTER_TETRAD = 0
 REGISTER_CLIENT = 1
 UPDATE_TETRAD = 2
 UPDATE_CLIENT_STATE = 3
@@ -30,15 +31,20 @@ class Message:
 class RegisterTetrad(Message):
     type = REGISTER_TETRAD
 
-class RegisterClient(Message):
+class RegisterClient(Message): 
     type = REGISTER_CLIENT
     name = "" 
 
     def setName(self, name):
         self.name = name
         self.length = len(name)
+
     def pack(self):
         return struct.pack("!BBB%ds" % (self.length,), self.version, self.type, int(self.length), bytes(self.name, 'utf-8'))
+
+    def __str__(self):
+        return "REGISTER_CLIENT: val=(%s,%d)" % \
+            (self.name, self.length,)
 
 class UpdateTetrad(Message):
     type = UPDATE_TETRAD
@@ -175,7 +181,6 @@ def main():
     #start = time.time()
     sock.sendto(message.pack(), (hostname, int(port)))
 
-
     while True:
         try: 
             data, addr = sock.recvfrom(1024)
@@ -207,7 +212,9 @@ def main():
             print(data)
             
         #start = time.time()
-        #sock.sendto(message.pack(), (hostname, int(port)))
+        sock.sendto(message.pack(), (hostname, int(port)))
+        message.setName("I am a test client %d" % (random.randint(0,400)))
         print('Waiting for message from server...')
+
 if __name__=="__main__":
     main()
