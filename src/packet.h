@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include "player.h"
 
 #define PROTOCOL_VERSION 0
 #define MAX_NAMELEN 30
@@ -179,6 +180,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, \
 
 bool validateName(msg_register_client *m);
 bool validateRoomName(msg_create_room *m);
+void sendKickPacket(player_t *p, const char *reason, int sock);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

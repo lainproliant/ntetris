@@ -158,5 +158,26 @@ bool validateRoomName(msg_create_room *m)
     }
 
     return true;
-    
+}
+
+void sendKickPacket(player_t *p, const char *reason, int sock)
+{
+    packet_t *m = NULL;
+    msg_kick_client *mcast = NULL;
+
+    if (reason != NULL) {
+        m = malloc(sizeof(packet_t) + sizeof(msg_kick_client) + 
+                    strlen(reason));
+        mcast = (msg_kick_client*)m->data;
+        mcast->reasonLength = htons(strlen(reason));
+        memcpy(mcast->reason, reason, strlen(reason));
+    } else {
+        m = malloc(sizeof(packet_t) + sizeof(msg_kick_client));
+        mcast = (msg_kick_client*)m->data;
+        mcast->reasonLength = 0;
+    }
+
+    mcast->kickStatus = KICKED;
+    reply(m, sizeof(m), &p->playerAddr, sock);
+    free(m);
 }

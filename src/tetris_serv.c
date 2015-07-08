@@ -123,9 +123,6 @@ void kickPlayerByName(const char *name)
     uv_rwlock_wrlock(playerTableLock);
     player_t *p = NULL;
     p = g_hash_table_lookup(playersByNames, name);
-    uint8_t kickBufMsg[sizeof(packet_t) + sizeof(msg_kick_client)];
-    packet_t *m = (packet_t*)kickBufMsg;
-    msg_kick_client *mcast = (msg_kick_client*)m->data;
 
     if (p == NULL) {
         WARNING("Player %s not found", name);
@@ -135,9 +132,7 @@ void kickPlayerByName(const char *name)
         g_hash_table_remove(playersById, GUINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
 
-        mcast->reasonLength = 0;
-        mcast->kickStatus = KICKED;
-        reply(m, sizeof(m), &p->playerAddr, vanillaSock);
+        sendKickPacket(p, (const char*)NULL, vanillaSock);
 
         destroyPlayer(p);
     }
@@ -149,8 +144,6 @@ void kickPlayerById(unsigned int id, const char *reason)
 {
     uv_rwlock_wrlock(playerTableLock);
     player_t *p = NULL;
-    packet_t *m = NULL;
-    msg_kick_client *mcast = NULL;
     p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
 
     if (p == NULL) {
@@ -159,23 +152,8 @@ void kickPlayerById(unsigned int id, const char *reason)
         g_hash_table_remove(playersByNames, p->name);
         g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
-
-        if (reason != NULL) {
-            m = malloc(sizeof(packet_t) + sizeof(msg_kick_client) + 
-                        strlen(reason));
-            mcast = (msg_kick_client*)m->data;
-            mcast->reasonLength = htons(strlen(reason));
-            memcpy(mcast->reason, reason, strlen(reason));
-        } else {
-            m = malloc(sizeof(packet_t) + sizeof(msg_kick_client));
-            mcast = (msg_kick_client*)m->data;
-            mcast->reasonLength = 0;
-        }
-
-        mcast->kickStatus = KICKED;
-        reply(m, sizeof(m), &p->playerAddr, vanillaSock);
+        sendKickPacket(p, reason, vanillaSock);
         destroyPlayer(p);
-        free(m);
     }
 
     uv_rwlock_wrunlock(playerTableLock);
@@ -260,6 +238,13 @@ void gh_freeplayer(gpointer k, gpointer v, gpointer d)
     destroyPlayer(p);
 }
 
+/* Function to feed to g_hash_table_foreach */
+void gh_kickPlayer(gpointer k, gpointer v, gpointer d)
+{
+    sendKickPacket((player_t*)v, (const char*)d, vanillaSock);
+    destroyPlayer((player_t*)v);
+}
+
 void killPlayers(uv_timer_t *h)
 {
     uv_rwlock_wrlock(playerTableLock);
@@ -267,6 +252,24 @@ void killPlayers(uv_timer_t *h)
     g_hash_table_remove_all(playersById);
     g_hash_table_remove_all(playersByNames);
     uv_rwlock_wrunlock(playerTableLock);
+}
+
+void graceful_shutdown(const char *reason)
+{
+    const char *kickReason = NULL;
+    const char *defaultReason = "Server going down";
+
+    /* If empty or NULL string (empty if strsep used) */
+    kickReason = ((reason) && strlen(reason)) ? reason : defaultReason;
+
+    g_hash_table_foreach_steal(playersById,
+                              (GHRFunc)gh_kickPlayer, 
+                              (gpointer)kickReason);
+
+    PRINT("Taking server down with reason: %s\n", kickReason);
+    /* Do other cleanup stuff here */
+    uv_loop_close(uv_default_loop());
+    exit(0);
 }
 
 void parse_cmd(const char *cmd)
@@ -321,6 +324,9 @@ void parse_cmd(const char *cmd)
         } else {
             kickPlayerById(id, NULL);
         }
+    } else if (!strncmp(srvcmd, "quit", 5)) {
+        reason = strsep((char**)&cmd, "\n");
+        graceful_shutdown(reason); 
     } else {
         WARNING("command %s not recognized", srvcmd);
     }
