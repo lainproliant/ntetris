@@ -1,4 +1,6 @@
 #pragma once
+#ifndef __PACKET_H
+#define __PACKET_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -185,3 +187,5 @@ void sendKickPacket(player_t *p, const char *reason, int sock);
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */
 #define ERRMSG_SIZE sizeof(packet_t)+sizeof(msg_err) 
+
+#endif

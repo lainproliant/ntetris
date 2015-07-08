@@ -1,4 +1,6 @@
 #pragma once
+#ifndef __PLAYER_H
+#define __PLAYER_H
 
 #include <sys/socket.h>
 #include <stdint.h>
@@ -27,3 +29,5 @@ typedef struct _player_t {
 
 player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id);
 void *destroyPlayer(player_t *p);
+
+#endif
