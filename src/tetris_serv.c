@@ -56,10 +56,12 @@ only call this to a faster PRNG after so many calls */
 uint32_t getRand()
 {
     uint32_t retVal = 0;
-    size_t bRead = fread(&retVal, sizeof(uint32_t), 1, randFile);
+    size_t nRead = fread(&retVal, sizeof(uint32_t), 1, randFile);
     
-    if (bRead != sizeof(uint32_t)) {
-        ERRMSG("Error reading bytes from random file");
+    if (nRead == 0) {
+        if (ferror(randFile)) {
+            ERROR("Error reading bytes from random file: %s", strerror(errno));
+        }
     }
 
     return retVal;
@@ -191,22 +193,13 @@ void printPlayers()
 
 gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
 {
-    packet_t *m = NULL;
-    msg_kick_client *mcast = NULL;
     const char *kickMsg = "Stale connection";
-    uint8_t kickBufMsg[sizeof(packet_t) + 
-                       sizeof(msg_kick_client) +
-                       strlen(kickMsg)];
     player_t *p = (player_t*)v;
     p->secBeforeNextPingMax -= GPOINTER_TO_INT(d);
+    usleep(1e6);
 
     if (p->secBeforeNextPingMax <= 0) {
-        m = (packet_t*)kickBufMsg;
-        mcast = (msg_kick_client*)m->data;
-        mcast->reasonLength = htons(strlen(kickMsg));
-        memcpy(mcast->reason, kickMsg, strlen(kickMsg));
-        mcast->kickStatus = KICKED;
-        reply(m, sizeof(m), &p->playerAddr, vanillaSock);
+        sendKickPacket(p, kickMsg, vanillaSock);
 
         /* Remove from the other hashtable before freeing */
         g_hash_table_remove(playersByNames, p->name);
