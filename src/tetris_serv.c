@@ -196,7 +196,6 @@ gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
     const char *kickMsg = "Stale connection";
     player_t *p = (player_t*)v;
     p->secBeforeNextPingMax -= GPOINTER_TO_INT(d);
-    usleep(1e6);
 
     if (p->secBeforeNextPingMax <= 0) {
         sendKickPacket(p, kickMsg, vanillaSock);
@@ -212,6 +211,21 @@ gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
     return FALSE;
 }
 
+void destroy_expire_work_t(uv_work_t *w, int status)
+{
+    free(w);
+}
+
+void expireStaleUsersDispatch(uv_work_t *w)
+{
+    uv_timer_t *h = (uv_timer_t*)w->data;
+    uv_rwlock_wrlock(playerTableLock);
+    g_hash_table_foreach_steal(playersById,
+                              (GHRFunc)gh_subtractSeconds, 
+                              GINT_TO_POINTER(h->repeat / 1000));
+    uv_rwlock_wrunlock(playerTableLock);
+}
+
 void expireStaleUsers(uv_timer_t *h)
 {
     /* Every 15 seconds, look for users that haven't
@@ -223,11 +237,11 @@ void expireStaleUsers(uv_timer_t *h)
      * here are the only safe way to do this without messing
      * up the data structure in a foreach.  An iterator would
      * have been another option */
-    uv_rwlock_wrlock(playerTableLock);
-    g_hash_table_foreach_steal(playersById,
-                              (GHRFunc)gh_subtractSeconds, 
-                              GINT_TO_POINTER(h->repeat / 1000));
-    uv_rwlock_wrunlock(playerTableLock);
+
+    uv_work_t *workData = (uv_work_t*)malloc(sizeof(uv_work_t));
+    workData->data = h;
+    uv_queue_work(uv_default_loop(), workData,
+                  expireStaleUsersDispatch, destroy_expire_work_t);
 }
 
 void gh_freeplayer(gpointer k, gpointer v, gpointer d)
@@ -558,6 +572,7 @@ int main(int argc, char *argv[])
     int go_ret;
     int port = DEFAULT_PORT;
     const char *stn_err_str = NULL;
+    struct sockaddr_in recaddr;
 
     static struct option longopts[] = {
         {"port",      required_argument,     NULL,     'p'},
@@ -603,7 +618,6 @@ int main(int argc, char *argv[])
 
     ioVec = uv_buf_init(buffer, 200);
     memset(buffer, 0, sizeof(buffer));
-    struct sockaddr_in recaddr;
 
     uv_fs_read(loop, &stdin_watcher, 0, &ioVec, 1, -1, on_type);
 
@@ -619,9 +633,12 @@ int main(int argc, char *argv[])
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
     uv_udp_bind(&g_recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);
+
+
     uv_udp_recv_start(&g_recv_sock, malloc_cb, onrecv);
 
-    vanillaSock = socket(AF_INET, SOCK_DGRAM, 0);
+    /* "Bind" to this so outbound is the same the socket was received over */
+    vanillaSock = g_recv_sock.io_watcher.fd;
     uv_run(loop, UV_RUN_DEFAULT);
 
     /* state cleanup */
