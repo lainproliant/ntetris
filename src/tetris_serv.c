@@ -33,7 +33,7 @@ typedef struct _request {
 static uv_udp_t g_recv_sock;
 static uv_fs_t stdin_watcher;
 
-static int vanillaSock;
+int vanillaSock;
 static char buffer[200];
 static uv_buf_t ioVec;
 
@@ -44,40 +44,12 @@ static uv_buf_t ioVec;
  * pools provided by these files as a seed to better generators.
  * Honestly this doesn't need to be cryptographically secure, just
  * varied enough and not ridiculously predictable */
-static FILE *randFile = NULL;
+FILE *randFile = NULL;
 
 /* Put rw locks here */
 static uv_rwlock_t *playerTableLock = NULL;
 static GHashTable *playersByNames = NULL;
 static GHashTable *playersById = NULL;
-
-/* This function does necessitate a syscall, so perhaps we should
-only call this to a faster PRNG after so many calls */
-uint32_t getRand()
-{
-    uint32_t retVal = 0;
-    size_t nRead = fread(&retVal, sizeof(uint32_t), 1, randFile);
-    
-    if (nRead == 0) {
-        if (ferror(randFile)) {
-            ERROR("Error reading bytes from random file: %s", strerror(errno));
-        }
-    }
-
-    return retVal;
-}
-
-uint32_t genPlayerId()
-{
-    /* Find a non-colliding Id, probably will not require many loops */
-    uint32_t retVal = getRand();
-
-    do {
-        retVal = getRand();
-    } while (g_hash_table_lookup(playersById, GUINT_TO_POINTER(retVal)));
-
-    return retVal;
-}
 
 void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
 {
@@ -454,7 +426,8 @@ void handle_msg(uv_work_t *req)
                     goto name_collide;
                 }
 
-                newPlayer = createPlayer(clientName, r->from, genPlayerId());
+                newPlayer = createPlayer(clientName, r->from,
+                                            genPlayerId(playersById));
                 g_hash_table_insert(playersByNames, clientName, newPlayer);
                 g_hash_table_insert(playersById,
                                     GINT_TO_POINTER(newPlayer->playerId), 
@@ -522,7 +495,7 @@ void destroy_msg(uv_work_t *req, int status)
     free(r);
     free(req);
 
-    if(status) {
+    if (status) {
         WARNING("%s", uv_err_name(status));
     }
 }

@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include "player.h"
 
+extern int vanillaSock;
+
 #define PROTOCOL_VERSION 0
 #define MAX_NAMELEN 30
 

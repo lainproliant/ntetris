@@ -2,6 +2,7 @@
 #include "macros.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "rand.h"
 
 #ifdef __linux__
 #include <bsd/string.h>
@@ -31,4 +32,16 @@ void *destroyPlayer(player_t *p)
     PRINT("Destroying player object[%p] (%s)\n", p, p->name);
     free(p->name);
     free(p);
+}
+
+uint32_t genPlayerId(GHashTable *playersById)
+{
+    /* Find a non-colliding Id, probably will not require many loops */
+    uint32_t retVal;
+
+    do {
+        retVal = getRand();
+    } while (g_hash_table_lookup(playersById, GUINT_TO_POINTER(retVal)));
+
+    return retVal;
 }

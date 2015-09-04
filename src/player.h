@@ -4,6 +4,8 @@
 
 #include <sys/socket.h>
 #include <stdint.h>
+#include <glib.h>
+#include <stdint.h>
 
 /* These represent all the various possible states the player
  * can be represented by in the somewhat simple game state machine.
@@ -29,5 +31,6 @@ typedef struct _player_t {
 
 player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id);
 void *destroyPlayer(player_t *p);
+uint32_t genPlayerId(GHashTable *playersById);
 
 #endif
