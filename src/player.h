@@ -6,6 +6,17 @@
 #include <stdint.h>
 #include <glib.h>
 #include <stdint.h>
+#include <uv.h>
+
+#include "packet.h"
+
+/* Global rwlocks for thread safety on these shared objects */
+extern uv_rwlock_t *playerTableLock;
+
+/* Hashtables for storing the players - may eventually store
+ * these in a srvstate_t or some such object */
+GHashTable *playersByNames;
+GHashTable *playersById;
 
 /* These represent all the various possible states the player
  * can be represented by in the somewhat simple game state machine.
@@ -30,7 +41,13 @@ typedef struct _player_t {
 } player_t;
 
 player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id);
-void *destroyPlayer(player_t *p);
+void destroyPlayer(player_t *p);
 uint32_t genPlayerId(GHashTable *playersById);
+void pulsePlayer(msg_ping *m, const struct sockaddr *from);
+void regPlayer(msg_reg_ack *m, const struct sockaddr *from);
+void kickPlayerByName(const char *name);
+void kickPlayerById(unsigned int id, const char *reason);
+void printPlayer(gpointer k, gpointer v, gpointer d);
+void printPlayers();
 
 #endif

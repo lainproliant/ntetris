@@ -15,12 +15,13 @@
 #include <bsd/string.h>
 #endif
 
-#include <limits.h>
 #include <uv.h>
+#include <limits.h>
 #include <pthread.h>
 #include "packet.h"
 #include "player.h"
 #include "macros.h"
+#include "cmd.h"
 
 #define DEFAULT_PORT 48879
 
@@ -47,121 +48,9 @@ static uv_buf_t ioVec;
 FILE *randFile = NULL;
 
 /* Put rw locks here */
-static uv_rwlock_t *playerTableLock = NULL;
-static GHashTable *playersByNames = NULL;
-static GHashTable *playersById = NULL;
-
-void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
-{
-    uint32_t playerId = ntohl(m->curPlayerId);
-    player_t *p = NULL;
-
-    uv_rwlock_rdlock(playerTableLock);
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
-
-    /* Not sure this is a great way to compare addr, hopefully padding
-       isn't unitialized memory or something */
-    if (p != NULL && 
-        !memcmp(p->playerAddr.sa_data, 
-                from->sa_data,
-                sizeof(from->sa_data)) &&
-                p->state == AWAITING_CLIENT_ACK) {
-        p->state = BROWSING_ROOMS; 
-    } else {
-        WARNING("Player with id %u not found or"
-                " message was sent from invalid addr"
-                " or player was in inconsistent state", playerId);
-    }
-    uv_rwlock_rdunlock(playerTableLock);
-}
-
-void pulsePlayer(msg_ping *m, const struct sockaddr *from)
-{
-    uint32_t playerId = ntohl(m->playerId);
-    player_t *p = NULL;
-
-    uv_rwlock_rdlock(playerTableLock);
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
-
-    /* Not sure this is a great way to compare addr, hopefully padding
-       isn't unitialized memory or something */
-    if (p != NULL && 
-        !memcmp(p->playerAddr.sa_data, 
-                from->sa_data,
-                sizeof(from->sa_data))) {
-        p->secBeforeNextPingMax = 40; 
-    } else {
-        WARNING("Player with id %u not found or"
-                " message was sent from invalid addr", playerId);
-    }
-    uv_rwlock_rdunlock(playerTableLock);
-}
-
-void kickPlayerByName(const char *name) 
-{
-    uv_rwlock_wrlock(playerTableLock);
-    player_t *p = NULL;
-    p = g_hash_table_lookup(playersByNames, name);
-
-    if (p == NULL) {
-        WARNING("Player %s not found", name);
-    } else {
-        // kick packet logic goes here 
-        g_hash_table_remove(playersByNames, name);
-        g_hash_table_remove(playersById, GUINT_TO_POINTER(p->playerId));
-        PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
-
-        sendKickPacket(p, (const char*)NULL, vanillaSock);
-
-        destroyPlayer(p);
-    }
-
-    uv_rwlock_wrunlock(playerTableLock);
-}
-
-void kickPlayerById(unsigned int id, const char *reason)
-{
-    uv_rwlock_wrlock(playerTableLock);
-    player_t *p = NULL;
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
-
-    if (p == NULL) {
-        WARNING("Player id: %u not found", id);
-    } else {
-        g_hash_table_remove(playersByNames, p->name);
-        g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
-        PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
-        sendKickPacket(p, reason, vanillaSock);
-        destroyPlayer(p);
-    }
-
-    uv_rwlock_wrunlock(playerTableLock);
-}
-
-void printPlayer(gpointer k, gpointer v, gpointer d)
-{
-    player_t *p = (player_t*)v;
-    PRINT("\t%s [id=" BOLDRED "%u" 
-            RESET", ptr=%p, to=%d]\n", p->name,
-                                       p->playerId,
-                                       p, p->secBeforeNextPingMax);
-}
-
-void printPlayers()
-{
-    uv_rwlock_rdlock(playerTableLock);
-    size_t numPlayers = g_hash_table_size(playersById);
-
-    if (numPlayers == 0) {
-        PRINT("[0 players found]\n");
-    } else {
-        PRINT("PlayerList (%lu players) = \n", numPlayers);
-        g_hash_table_foreach(playersById, 
-            (GHFunc)printPlayer, NULL);
-    }
-    
-    uv_rwlock_rdunlock(playerTableLock);
-}
+uv_rwlock_t *playerTableLock = NULL;
+extern GHashTable *playersByNames = NULL;
+extern GHashTable *playersById = NULL;
 
 gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
 {
@@ -214,106 +103,6 @@ void expireStaleUsers(uv_timer_t *h)
     workData->data = h;
     uv_queue_work(uv_default_loop(), workData,
                   expireStaleUsersDispatch, destroy_expire_work_t);
-}
-
-void gh_freeplayer(gpointer k, gpointer v, gpointer d)
-{
-    player_t *p = (player_t*)v;
-    destroyPlayer(p);
-}
-
-/* Function to feed to g_hash_table_foreach */
-void gh_kickPlayer(gpointer k, gpointer v, gpointer d)
-{
-    sendKickPacket((player_t*)v, (const char*)d, vanillaSock);
-    destroyPlayer((player_t*)v);
-}
-
-void killPlayers(uv_timer_t *h)
-{
-    uv_rwlock_wrlock(playerTableLock);
-    g_hash_table_foreach(playersById, (GHFunc)gh_freeplayer, NULL);
-    g_hash_table_remove_all(playersById);
-    g_hash_table_remove_all(playersByNames);
-    uv_rwlock_wrunlock(playerTableLock);
-}
-
-void graceful_shutdown(const char *reason)
-{
-    const char *kickReason = NULL;
-    const char *defaultReason = "Server going down";
-
-    /* If empty or NULL string (empty if strsep used) */
-    kickReason = ((reason) && strlen(reason)) ? reason : defaultReason;
-
-    g_hash_table_foreach_steal(playersById,
-                              (GHRFunc)gh_kickPlayer, 
-                              (gpointer)kickReason);
-
-    PRINT("Taking server down with reason: %s\n", kickReason);
-    /* Do other cleanup stuff here */
-    uv_loop_close(uv_default_loop());
-    exit(0);
-}
-
-void parse_cmd(const char *cmd)
-{
-    const char *stn_err_str= NULL;
-    const char *pNameOrId = NULL;
-    const char *reason = NULL;
-    const char *srvcmd = strsep((char**)&cmd, " \n");
-    unsigned int id;
-
-    if (!strncmp(srvcmd, "lsplayers", 9)) {
-        printPlayers(NULL);
-    } else if (!strncmp(srvcmd, "kickname", 8)) {
-        pNameOrId = strsep((char**)&cmd, "\n");
-        kickPlayerByName(pNameOrId);
-    } else if (!strncmp(srvcmd, "kickidreason", 11)) {
-        pNameOrId = strsep((char**)&cmd, " ");
-
-        if (pNameOrId == NULL || strlen(pNameOrId) == 0) {
-            WARN("Syntax: kickidreason <userid> <reason>");
-            return;
-        }
-
-        reason = strsep((char**)&cmd, "\n");
-
-        if (reason == NULL || strlen(reason) == 0) {
-            WARN("Syntax: kickidreason <userid> <reason>");
-            return;
-        }
-
-        id = strtonum(pNameOrId, 0, UINT32_MAX, &stn_err_str);
-
-        if (stn_err_str) {
-            WARNING("Can't parse uid %s: %s", pNameOrId, stn_err_str);
-        } else {
-            kickPlayerById(id, reason);
-        }
-    } else if (!strncmp(srvcmd, "kickall", 6)) {
-        killPlayers(NULL);       
-    } else if (!strncmp(srvcmd, "kickid", 6)) {
-        pNameOrId = strsep((char**)&cmd, "\n");
-
-        if (pNameOrId == NULL || strlen(pNameOrId) == 0) {
-            WARN("Syntax: kickid <userid>");
-            return;
-        }
-
-        id = strtonum(pNameOrId, 0, UINT32_MAX, &stn_err_str);
-
-        if (stn_err_str) {
-            WARNING("Can't parse uid %s: %s", pNameOrId, stn_err_str);
-        } else {
-            kickPlayerById(id, NULL);
-        }
-    } else if (!strncmp(srvcmd, "quit", 5)) {
-        reason = strsep((char**)&cmd, "\n");
-        graceful_shutdown(reason); 
-    } else {
-        WARNING("command %s not recognized", srvcmd);
-    }
 }
 
 void on_type(uv_fs_t *req)

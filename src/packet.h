@@ -6,7 +6,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/socket.h>
-#include "player.h"
+
+/* Forward declaration of player_t */
+struct _player_t;
 
 extern int vanillaSock;
 
@@ -184,7 +186,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, \
 
 bool validateName(msg_register_client *m);
 bool validateRoomName(msg_create_room *m);
-void sendKickPacket(player_t *p, const char *reason, int sock);
+void sendKickPacket(struct _player_t *p, const char *reason, int sock);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */
