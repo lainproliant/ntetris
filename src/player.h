@@ -15,8 +15,8 @@ extern uv_rwlock_t *playerTableLock;
 
 /* Hashtables for storing the players - may eventually store
  * these in a srvstate_t or some such object */
-GHashTable *playersByNames;
-GHashTable *playersById;
+extern GHashTable *playersByNames;
+extern GHashTable *playersById;
 
 /* These represent all the various possible states the player
  * can be represented by in the somewhat simple game state machine.

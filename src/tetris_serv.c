@@ -49,8 +49,8 @@ FILE *randFile = NULL;
 
 /* Put rw locks here */
 uv_rwlock_t *playerTableLock = NULL;
-extern GHashTable *playersByNames = NULL;
-extern GHashTable *playersById = NULL;
+GHashTable *playersByNames = NULL;
+GHashTable *playersById = NULL;
 
 gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
 {

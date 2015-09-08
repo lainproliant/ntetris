@@ -4,12 +4,17 @@
 #include "rand.h"
 #include "player.h"
 
+#ifdef __linux__
+#include <bsd/stdlib.h>
+#include <bsd/string.h>
+#endif
+
 room_t *createRoom(msg_create_room *m, unsigned int id)
 {
     room_t *r = calloc(1, sizeof(room_t));
     r->name = calloc(m->roomNameLen, sizeof(char));
 
-    strlcpy(r->name, m->roomNameAndPass, m->roomNameLen); 
+    strlcpy(r->name, m->roomNameAndPass, m->roomNameLen);
 
     if (m->passLen > 0) {
         r->password = calloc(m->passLen, sizeof(char));
