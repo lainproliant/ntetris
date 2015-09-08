@@ -1,7 +1,7 @@
 #include "rand.h"
 
 /* This function does necessitate a syscall, so perhaps we should
-only call this to a faster PRNG after so many calls */
+only call this to seed a faster PRNG after so many calls */
 uint32_t getRand()
 {
     uint32_t retVal = 0;
