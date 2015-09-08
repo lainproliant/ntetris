@@ -1,4 +1,5 @@
 #include "player.h"
+#include "packet.h"
 #include "macros.h"
 #include <stdlib.h>
 #include <stdio.h>

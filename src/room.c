@@ -3,6 +3,7 @@
 #include "room.h"
 #include "rand.h"
 #include "player.h"
+#include "packet.h"
 
 #ifdef __linux__
 #include <bsd/stdlib.h>

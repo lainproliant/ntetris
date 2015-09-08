@@ -2,9 +2,9 @@
 #ifndef __ROOM_H
 #define __ROOM_H
 
-#include "player.h"
-#include "packet.h"
 #include <glib.h>
+
+struct _msg_create_room;
 
 typedef struct _room_t {
     char *password;
@@ -14,7 +14,7 @@ typedef struct _room_t {
     uint8_t numPlayers;
 } room_t;
 
-room_t *createRoom(msg_create_room *m, unsigned int id);
+room_t *createRoom(struct _msg_create_room *m, unsigned int id);
 void destroyRoom(room_t *r, const char *optionalMsg);
 unsigned int genRoomId(GHashTable *roomsById);
 
