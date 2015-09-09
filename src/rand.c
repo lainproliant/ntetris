@@ -1,4 +1,9 @@
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <errno.h>
 #include "rand.h"
+#include "macros.h"
 
 /* This function does necessitate a syscall, so perhaps we should
 only call this to seed a faster PRNG after so many calls */
