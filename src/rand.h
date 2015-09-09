@@ -6,5 +6,8 @@
 
 extern FILE *randFile;
 uint32_t getRand();
+uint16_t getRandShort();
+uint8_t getRandByte();
+uint8_t *getRandBytes(size_t numBytes);
 
 #endif
