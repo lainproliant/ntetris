@@ -139,11 +139,12 @@ void printPlayer(gpointer k, gpointer v, gpointer d)
     char ipBuf[20];
     player_t *p = (player_t*)v;
     uv_ip4_name((const struct sockaddr_in*)(&p->playerAddr), ipBuf, 19);
-    PRINT("%-30s %-30u %-30s %-30d\n",
+    PRINT("%-30s %-17u %-19s %-4d %-4d\n",
         p->name,
         p->playerId,
         ipBuf,
-        p->secBeforeNextPingMax);
+        p->secBeforeNextPingMax,
+        p->state);
 }
 
 void printPlayers()
@@ -155,11 +156,11 @@ void printPlayers()
         WARN("[0 players found]");
     } else {
         PRINT("PlayerList (%lu players) = \n", numPlayers);
-        PRINT(BOLDGREEN "%-30s %-30s %-30s %-30s\n", 
+        PRINT(BOLDGREEN "%-30s %-17s %-19s %-4s %-4s\n", 
             "Player Name", "PlayerId",\
-            "Player IP", "TTL");
-        PRINT("-------------------------------------------------"
-              "-----------------------------------------------\n" RESET);
+            "Player IP", "TTL", "STATE");
+        PRINT("-----------------------------------------"
+              "---------------------------------------\n" RESET);
         g_hash_table_foreach(playersById, 
             (GHFunc)printPlayer, NULL);
     }
