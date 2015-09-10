@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <sys/socket.h>
+#include <uv.h>
 
 /* Forward declaration of player_t */
 struct _player_t;
@@ -175,6 +176,13 @@ typedef struct _msg_disconnect_client {
 } msg_disconnect_client;
 #pragma pop
 
+/* This is a libuv payload for onrecv callbacks */
+typedef struct _request {
+    ssize_t len;
+    void *payload;
+    struct sockaddr from;
+} request;
+
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);
@@ -187,6 +195,9 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, \
 bool validateName(msg_register_client *m);
 bool validateRoomName(msg_create_room *m);
 void sendKickPacket(struct _player_t *p, const char *reason, int sock);
+
+/* libuv callback for handling incoming datagrams */
+void handle_msg(uv_work_t *req);
 
 /* These are the base sizes of each type, without the variable components 
  * packed on to the ends */

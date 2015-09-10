@@ -136,11 +136,14 @@ void kickPlayerById(unsigned int id, const char *reason)
 
 void printPlayer(gpointer k, gpointer v, gpointer d)
 {
+    char ipBuf[20];
     player_t *p = (player_t*)v;
-    PRINT("\t%s [id=" BOLDRED "%u" 
-            RESET", ptr=%p, to=%d]\n", p->name,
-                                       p->playerId,
-                                       p, p->secBeforeNextPingMax);
+    uv_ip4_name((const struct sockaddr_in*)(&p->playerAddr), ipBuf, 19);
+    PRINT("%-30s %-30u %-30s %-30d\n",
+        p->name,
+        p->playerId,
+        ipBuf,
+        p->secBeforeNextPingMax);
 }
 
 void printPlayers()
@@ -149,9 +152,14 @@ void printPlayers()
     size_t numPlayers = g_hash_table_size(playersById);
 
     if (numPlayers == 0) {
-        PRINT("[0 players found]\n");
+        WARN("[0 players found]");
     } else {
         PRINT("PlayerList (%lu players) = \n", numPlayers);
+        PRINT(BOLDGREEN "%-30s %-30s %-30s %-30s\n", 
+            "Player Name", "PlayerId",\
+            "Player IP", "TTL");
+        PRINT("-------------------------------------------------"
+              "-----------------------------------------------\n" RESET);
         g_hash_table_foreach(playersById, 
             (GHFunc)printPlayer, NULL);
     }
