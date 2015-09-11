@@ -57,10 +57,7 @@ void pulsePlayer(msg_ping *m, const struct sockaddr *from)
 
     /* Not sure this is a great way to compare addr, hopefully padding
        isn't unitialized memory or something */
-    if (p != NULL && 
-        !memcmp(p->playerAddr.sa_data, 
-                from->sa_data,
-                sizeof(from->sa_data))) {
+    if (authPlayerPkt(p, from)) {
         p->secBeforeNextPingMax = 40; 
     } else {
         WARNING("Player with id %u not found or"
@@ -77,13 +74,10 @@ void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
     uv_rwlock_rdlock(playerTableLock);
     p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
 
+    if (authPlayerPkt(p, from) && p->state == AWAITING_CLIENT_ACK) {
+                
     /* Not sure this is a great way to compare addr, hopefully padding
        isn't unitialized memory or something */
-    if (p != NULL && 
-        !memcmp(p->playerAddr.sa_data, 
-                from->sa_data,
-                sizeof(from->sa_data)) &&
-                p->state == AWAITING_CLIENT_ACK) {
         p->state = BROWSING_ROOMS; 
     } else {
         WARNING("Player with id %u not found or"
@@ -166,4 +160,33 @@ void printPlayers()
     }
     
     uv_rwlock_rdunlock(playerTableLock);
+}
+
+void disconnectPlayer(uint32_t id, request *r)
+{
+    player_t *p = NULL; 
+    const struct sockaddr *from = &r->from;
+    char ipBuf[20];
+    uv_ip4_name((const struct sockaddr_in*)(from), ipBuf, 19);
+    uv_rwlock_rdlock(playerTableLock);
+    
+    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
+    uv_rwlock_rdunlock(playerTableLock);
+
+    if (authPlayerPkt(p, from)) {
+        kickPlayerById(id, "Client requested disconnect");
+    } else {
+        WARNING("Player id %d does not match IP established (%s)!\n", 
+                id, ipBuf);
+    }
+}
+
+bool authPlayerPkt(player_t *p, const struct sockaddr *from)
+{
+    if (p != NULL && 
+        !memcmp(p->playerAddr.sa_data, from->sa_data, sizeof(from->sa_data))) {
+        return true;
+    }
+
+    return false;
 }

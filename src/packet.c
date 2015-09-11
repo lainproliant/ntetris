@@ -1,4 +1,5 @@
 #include "packet.h"
+#include "room.h"
 #include "player.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -150,11 +151,11 @@ bool validateRoomName(msg_create_room *m)
 {
     if (m->roomNameLen > MAX_NAMELEN || m->roomNameLen == 0) {
         return false;
-    } else {
-        for (size_t i = 0; i < m->roomNameLen; ++i) {
-            if (!isprint(m->roomNameAndPass[i])) {
-                return false;
-            }
+    } 
+
+    for (size_t i = 0; i < m->roomNameLen; ++i) {
+        if (!isprint(m->roomNameAndPass[i])) {
+            return false;
         }
     }
 
@@ -197,9 +198,12 @@ void handle_msg(uv_work_t *req)
     msg_create_room *croom = NULL;
     char *clientName = NULL;
     player_t *newPlayer = NULL;
+    player_t *pkt_player = NULL;
     msg_reg_ack m_ack;
     msg_reg_ack *m_recAck = NULL;
     msg_ping *m_recPing = NULL;
+    msg_disconnect_client *m_dc = NULL;
+    msg_list_rooms *m_lr = NULL;
     char senderIP[20] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
@@ -321,9 +325,31 @@ name_collide:
             pulsePlayer(m_recPing, &r->from);
             break;
 
+        case DISCONNECT_CLIENT:
+            m_dc = (msg_disconnect_client*)(pkt->data);
+            disconnectPlayer(ntohl(m_dc->playerId), r);
+            break;
 
+        case LIST_ROOMS:
+            m_lr = (msg_list_rooms*)(pkt->data);
+            uint32_t id = ntohl(m_lr->playerId);
+            
+            uv_rwlock_rdlock(playerTableLock);
+            pkt_player = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
+            uv_rwlock_rdunlock(playerTableLock);
+
+            if (authPlayerPkt(pkt_player, &r->from)) {
+                PRINT(BOLDCYAN "PLAYER SUCCESSFULLY REQUESTED ROOMS!\n" RESET);
+                announceRooms(&r->from);
+            } else {
+                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 19);
+                WARNING("Player id(%u) / ip(%s) in packet is wrong", 
+                        id, senderIP);
+            }
+             
+            break; 
         default:
-            WARN("Unhandled packet type!!!!");
+            WARNING("Unhandled packet type!!!! (%d)", packetType);
             createErrPacket(errPkt, UNSUPPORTED_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
             return;
