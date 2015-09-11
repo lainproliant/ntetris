@@ -7,10 +7,12 @@
 #include <glib.h>
 #include <stdint.h>
 #include <uv.h>
+#include <stdbool.h>
 
 /* Use forward declarations instead, can prevent some later headaches */
 struct _msg_ping;
 struct _msg_reg_ack;
+struct _request;
 
 /* Global rwlocks for thread safety on these shared objects */
 extern uv_rwlock_t *playerTableLock;
@@ -49,7 +51,9 @@ void pulsePlayer(struct _msg_ping *m, const struct sockaddr *from);
 void regPlayer(struct _msg_reg_ack *m, const struct sockaddr *from);
 void kickPlayerByName(const char *name);
 void kickPlayerById(unsigned int id, const char *reason);
+void disconnectPlayer(uint32_t id, struct _request *r);
 void printPlayer(gpointer k, gpointer v, gpointer d);
 void printPlayers();
+bool authPlayerPkt(player_t *p, const struct sockaddr *from);
 
 #endif

@@ -55,3 +55,8 @@ void destroyRoom(room_t *r, const char *optionalMsg)
     free(r->password);
     free(r); 
 }
+
+void announceRooms(const struct sockaddr *from)
+{
+
+}
