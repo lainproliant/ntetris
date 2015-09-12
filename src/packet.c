@@ -204,6 +204,7 @@ void handle_msg(uv_work_t *req)
     msg_ping *m_recPing = NULL;
     msg_disconnect_client *m_dc = NULL;
     msg_list_rooms *m_lr = NULL;
+    uint32_t incomingId;
     char senderIP[20] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
@@ -305,12 +306,20 @@ name_collide:
         case CREATE_ROOM:
             croom = (msg_create_room*)(pkt->data);
             
-            if(!validateRoomName(croom)) {
+            if (!validateRoomName(croom)) {
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 19);
                 WARN("Non-printable or too long room name from %s!", senderIP);
                 createErrPacket(errPkt, BAD_NAME);
                 reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
                 return;
+            }
+
+            incomingId = ntohl(croom->playerId);
+            GETPBYID(incomingId, pkt_player);
+
+            if (authPlayerPkt(pkt_player, &r->from, 
+                    BROWSING_ROOMS, BROWSING_ROOMS)) {
+                
             }
 
             break;
@@ -332,19 +341,18 @@ name_collide:
 
         case LIST_ROOMS:
             m_lr = (msg_list_rooms*)(pkt->data);
-            uint32_t id = ntohl(m_lr->playerId);
+            incomingId = ntohl(m_lr->playerId);
             
-            uv_rwlock_rdlock(playerTableLock);
-            pkt_player = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
-            uv_rwlock_rdunlock(playerTableLock);
-
-            if (authPlayerPkt(pkt_player, &r->from)) {
+            GETPBYID(incomingId, pkt_player);
+            if (authPlayerPkt(pkt_player, &r->from, 
+                    BROWSING_ROOMS, BROWSING_ROOMS)) {
                 PRINT(BOLDCYAN "PLAYER SUCCESSFULLY REQUESTED ROOMS!\n" RESET);
                 announceRooms(&r->from);
             } else {
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 19);
-                WARNING("Player id(%u) / ip(%s) in packet is wrong", 
-                        id, senderIP);
+                WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
+                        " is invalid for given player state", 
+                        incomingId, senderIP);
             }
              
             break; 

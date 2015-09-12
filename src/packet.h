@@ -31,6 +31,8 @@ typedef enum _MSG_TYPE {
     ERR_PACKET, /* There was an error parsing the client's packet */
     REG_ACK, /* Client registration acknowledgement */
     PING, /* Client pings back to the server to prevent auto timeout */
+    GAME_OVER, /* Game for the room has ended, notifies client of result */
+    OPPONENT_ANNOUNCE, /* Opponent info from a given room */
     NUM_MESSAGES
 } MSG_TYPE;
 
@@ -41,9 +43,10 @@ typedef enum _KICK_STATUS {
 } KICK_STATUS;
 
 typedef enum _USER_CMD {
-   ROTCW = 0,
-   ROTCCW = 1,
-   LOWER = 2,
+   ROTCW,
+   ROTCCW,
+   LOWER,
+   LEAVE_ROOM,
    NUM_CMDS
 } USER_CMD;
 
@@ -98,9 +101,10 @@ typedef struct _msg_update_tetrad {
 
 #pragma pack(1)
 typedef struct _msg_update_client_state {
-    int nlines; /* The number of lines cleared by the player */
-    int score; /* The current score of the player */
-    int level; /* The current difficulty level for the player */
+    uint32_t playerId; /* The player this update is affecting */
+    uint32_t nlines; /* The number of lines cleared by the player */
+    uint32_t score; /* The current score of the player */
+    uint32_t level; /* The current difficulty level for the player */
     uint8_t status; /* the current game status */
     uint8_t nLinesChanged; /* The size of eliminated lines */
     uint16_t changedLines[]; /* Which lines to eliminate */
@@ -172,8 +176,14 @@ typedef struct _msg_join_room {
 
 #pragma pack(1)
 typedef struct _msg_disconnect_client {
-    uint32_t playerId;
+    uint32_t playerId; /* The winning playerId */
 } msg_disconnect_client;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_game_over {
+    uint32_t winningPid;
+} msg_game_over;
 #pragma pop
 
 /* This is a libuv payload for onrecv callbacks */

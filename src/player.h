@@ -54,6 +54,7 @@ void kickPlayerById(unsigned int id, const char *reason);
 void disconnectPlayer(uint32_t id, struct _request *r);
 void printPlayer(gpointer k, gpointer v, gpointer d);
 void printPlayers();
-bool authPlayerPkt(player_t *p, const struct sockaddr *from);
+bool authPlayerPkt(player_t *p, const struct sockaddr *from, 
+                   PLAYER_STATE min, PLAYER_STATE max);
 
 #endif

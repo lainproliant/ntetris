@@ -57,8 +57,8 @@ void pulsePlayer(msg_ping *m, const struct sockaddr *from)
 
     /* Not sure this is a great way to compare addr, hopefully padding
        isn't unitialized memory or something */
-    if (authPlayerPkt(p, from)) {
-        p->secBeforeNextPingMax = 40; 
+    if (authPlayerPkt(p, from, BROWSING_ROOMS, NUM_STATES)) {
+        p->secBeforeNextPingMax = 40;
     } else {
         WARNING("Player with id %u not found or"
                 " message was sent from invalid addr", playerId);
@@ -74,8 +74,7 @@ void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
     uv_rwlock_rdlock(playerTableLock);
     p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
 
-    if (authPlayerPkt(p, from) && p->state == AWAITING_CLIENT_ACK) {
-                
+    if (authPlayerPkt(p, from, AWAITING_CLIENT_ACK, AWAITING_CLIENT_ACK)) {
     /* Not sure this is a great way to compare addr, hopefully padding
        isn't unitialized memory or something */
         p->state = BROWSING_ROOMS; 
@@ -173,7 +172,7 @@ void disconnectPlayer(uint32_t id, request *r)
     p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
     uv_rwlock_rdunlock(playerTableLock);
 
-    if (authPlayerPkt(p, from)) {
+    if (authPlayerPkt(p, from, BROWSING_ROOMS, NUM_STATES)) {
         kickPlayerById(id, "Client requested disconnect");
     } else {
         WARNING("Player id %d does not match IP established (%s)!\n", 
@@ -181,10 +180,12 @@ void disconnectPlayer(uint32_t id, request *r)
     }
 }
 
-bool authPlayerPkt(player_t *p, const struct sockaddr *from)
+bool authPlayerPkt(player_t *p, const struct sockaddr *from,
+                   PLAYER_STATE min, PLAYER_STATE max)
 {
     if (p != NULL && 
-        !memcmp(p->playerAddr.sa_data, from->sa_data, sizeof(from->sa_data))) {
+        !memcmp(p->playerAddr.sa_data, from->sa_data, sizeof(from->sa_data)) &&
+        min == NUM_STATES || (p->state >= min && p->state <= max)) {
         return true;
     }
 

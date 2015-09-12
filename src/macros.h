@@ -42,4 +42,12 @@
 #define WARN(...) WARNING("%s", __VA_ARGS__);
 #define ERRMSG(...) ERROR("%s", __VA_ARGS__);
 
+/* Statement expression would be useful here but I think it's a GCC'ism */
+#define GETPBYID(id, pkt_player) \
+    do { \
+            uv_rwlock_rdlock(playerTableLock); \
+            pkt_player = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id)); \
+            uv_rwlock_rdunlock(playerTableLock); \
+    } while (0)
+
 #endif
