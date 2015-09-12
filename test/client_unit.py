@@ -77,11 +77,14 @@ class UpdateTetrad(Message):
 class RegAck(Message):
     type = REG_ACK
     
-    def getUid():
+    def getUid(self):
         return self.uid
 
     def unpack(self, msg):
         (self.version,self.type,self.uid) = struct.unpack("!BBI", msg)
+    
+    def pack(self):
+        return struct.pack("!BBI", self.version, self.type, self.uid)
 
     def __str__(self):
         return "REG_ACK: val=%d" % (self.uid)
@@ -122,9 +125,24 @@ class UpdateClientState(Message):
         
 class DisconnectClient(Message):
     type = DISCONNECT_CLIENT
-        
+    
+    def __init__(self, uid):
+        self.uid = uid
+ 
+    def pack(self):
+        return struct.pack("!BBI", self.version, self.type, self.uid)
+       
 class KickClient(Message):
     type = KICK_CLIENT
+
+class ListRoom(Message):
+    type = LIST_ROOMS
+
+    def __init__(self, uid):
+        self.uid = uid
+
+    def pack(self):
+        return struct.pack("!BBI", self.version, self.type, self.uid) 
 
 class CreateRoom(Message):
     type = CREATE_ROOM
@@ -178,17 +196,11 @@ def main():
     message = RegisterClient()
 
     message.setName("I am a test client")   
-    #start = time.time()
     sock.sendto(message.pack(), (hostname, int(port)))
 
-    while True:
-        try: 
-            data, addr = sock.recvfrom(1024)
-            #totTime = time.time() - start
-            #print('took %lf ms' % (totTime*1000.0,))
-        except KeyboardInterrupt:
-            print("Bye!")
-            exit(0)
+    uid = None
+    try: 
+        data, addr = sock.recvfrom(1024)
         print("received msg from: %s" % str(addr))
         if int(data[1]) == ERROR:
             msg = ErrorMsg()
@@ -205,16 +217,25 @@ def main():
         elif int(data[1]) == REG_ACK:
             msg = RegAck()
             msg.unpack(data)
+
+            uid = msg.getUid()
+
             print(msg)
+            sock.sendto(msg.pack(), (hostname, int(port)))
+
+            sock.sendto(ListRoom(uid).pack(), (hostname, int(port)))
+
+            
         else:
             print('unrecognized pkt type')
             print('len(data) = %lu' % (len(data),))
             print(data)
-            
-        #start = time.time()
-        sock.sendto(message.pack(), (hostname, int(port)))
-        message.setName("I am a test client %d" % (random.randint(0,400)))
-        print('Waiting for message from server...')
+
+    except KeyboardInterrupt:
+        print("Bye!")
+        exit(0)
+           
+    sock.sendto(DisconnectClient(uid).pack(), (hostname, int(port)))
 
 if __name__=="__main__":
     main()
