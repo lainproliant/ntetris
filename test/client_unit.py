@@ -1,182 +1,78 @@
 #!/usr/bin/env python3
-
+from ntetrislib import *
+import queue
 import struct
 import socket
 import sys
 import random
 import time
+import threading
 
-REGISTER_TETRAD = 0
-REGISTER_CLIENT = 1
-UPDATE_TETRAD = 2
-UPDATE_CLIENT_STATE = 3
-DISCONNECT_CLIENT = 4
-KICK_CLIENT = 5
-CREATE_ROOM = 6
-LIST_ROOMS = 7
-ROOM_ANNOUNCE = 8
-JOIN_ROOM = 9
-USER_ACTION = 10
-ERROR = 11
-REG_ACK = 12
-NUM_MESSAGES = 13
+g_msgQ = queue.Queue()
+g_sendQ = queue.Queue()
 
+g_app_exiting = False
+g_room_list = []
 
-class Message:
-    type = None
-    length = 0
-    version = 0
+g_uid = None
 
+def listener(sock):
+    global g_msgQ
+    global g_app_exiting
 
-class RegisterTetrad(Message):
-    type = REGISTER_TETRAD
+    print("[*] Starting recv thread")
 
-class RegisterClient(Message): 
-    type = REGISTER_CLIENT
-    name = "" 
+    while not g_app_exiting:
+        data, addr = sock.recvfrom(1024)
+        ip,port = addr
+        print("[-] received msg from: %s" % str(ip))
+        g_msgQ.put(data)
 
-    def setName(self, name):
-        self.name = name
-        self.length = len(name)
+    sock.close()
 
-    def pack(self):
-        return struct.pack("!BBB%ds" % (self.length,), self.version, self.type, int(self.length), bytes(self.name, 'utf-8'))
+def sender(config):
+    global g_sendQ
+    global g_app_exiting
 
-    def __str__(self):
-        return "REGISTER_CLIENT: val=(%s,%d)" % \
-            (self.name, self.length,)
+    sock, hostname, port = config
 
-class UpdateTetrad(Message):
-    type = UPDATE_TETRAD
-    length = 20
-    
-    def getOldPos(self):
-        return (self.x, self.y)
+    print("[*] Starting send thread for server %s:%d" % (hostname, int(port)))
 
-    def getNewPos(self):
-        return (sekf.x0, self.y0) 
+    while not g_app_exiting:
+        data = g_sendQ.get()
+        sock.sendto(data, (hostname, int(port)))
 
-    def getRotation(self, rot):
-        return self.rot
+def commander():
+    global g_app_exiting
+    global g_uid
+    global g_sendQ
 
-    def unpack(self, msg):
-        (version,type,x,y,x0,y0,rot) = struct.unpack("!BBiiiii", msg)
-        self.version = version
-        self.type = type
+    print("[*] Starting command processor")
 
-        self.x = x
-        self.y = y
-        self.x0 = x0
-        self.y0 = y0
-        self.rot = rot
-
-    def __str__(self):
-        return "UPDATE_TETRAD: val=(%d,%d,%d,%d,%d)" % \
-            (self.x, self.y, self.x0, self.y0, self.rot)
-
-class RegAck(Message):
-    type = REG_ACK
-    
-    def getUid(self):
-        return self.uid
-
-    def unpack(self, msg):
-        (self.version,self.type,self.uid) = struct.unpack("!BBI", msg)
-    
-    def pack(self):
-        return struct.pack("!BBI", self.version, self.type, self.uid)
-
-    def __str__(self):
-        return "REG_ACK: val=%d" % (self.uid)
-
-
-class UpdateClientState(Message):
-    type = UPDATE_CLIENT_STATE
-    linesChanged = [];
-
-    def getLines(self):
-        return self.lines 
-
-    def getScore(self):
-        return self.score
-
-    def getLevel(self):
-        return self.level
-
-    def getStatus(self):
-        return self.status
- 
-    def getLinesChanges(self):
-        return self.lines_changed    
-
-    def unpack(self, msg):
-        (version,type,nl,score,lvl,stat,nlc) = struct.unpack_from('!BBiiiBB', msg)
-        self.version = version
-        self.lines = nl
-        self.score = score
-        self.level = lvl
-        self.status = stat
-        self.linesChanged = [struct.unpack_from('!H', msg, offset=15+x*2)[0] for x in range(nlc)] 
-
-    def __str__(self):
-        return "UPDATE_CLIENT_STATE: val=(%d,%d,%d,%d), linesChanged=" % \
-            (self.lines, self.score, self.level, self.status) + str(self.linesChanged)
-
+    while not g_app_exiting:
+        data = input("")
+        data = data.strip()
         
-class DisconnectClient(Message):
-    type = DISCONNECT_CLIENT
-    
-    def __init__(self, uid):
-        self.uid = uid
- 
-    def pack(self):
-        return struct.pack("!BBI", self.version, self.type, self.uid)
-       
-class KickClient(Message):
-    type = KICK_CLIENT
+        if data == "ls":
+            print("Rooms:")
+            for room in g_room_list:
+                print(room)
+        if data == "create" and g_uid != None:
+            msg = CreateRoom(g_uid, 4, "Test room", "for fun")
+            print(msg)
+            g_sendQ.put(msg.pack())
+        if data == "update" and g_uid != None:
+            msg = ListRoom(g_uid)
+            g_sendQ.put(msg.pack())
 
-class ListRoom(Message):
-    type = LIST_ROOMS
-
-    def __init__(self, uid):
-        self.uid = uid
-
-    def pack(self):
-        return struct.pack("!BBI", self.version, self.type, self.uid) 
-
-class CreateRoom(Message):
-    type = CREATE_ROOM
-    length = 16
-
-    def setNumPlayers(self, num):
-        self.numPlayers = num
-    
-    def setNameLen(self, length):
-        self.nameLength = length
-
-    def setName(self, name):
-        self.name = name
-
-class UserAction(Message):
-    type = USER_ACTION
-    length = 8
-
-    def setCmd(self, cmd):
-        self.cmd = cmd
-class ErrorMsg(Message):
-    type = ERROR
-    
-    def unpack(self, msg):
-        (version, type, val) = struct.unpack("!BBB", msg)
-
-        self.version = version
-        self.type = type
-        self.val = val
-
-    def __str__(self):
-        return "ERROR: val=%d" % (int(self.val))
 
 def main():
+    global g_msgQ
+    global g_sendQ
+    global g_app_exiting
+    global g_uid
+    global g_room_list
+
     argv = sys.argv
     
     if len(argv) != 3:
@@ -193,49 +89,65 @@ def main():
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("",0)) 
  
+    listen_thread = threading.Thread(target=listener, args={sock,})
+    listen_thread.start()
+
+    command_thread = threading.Thread(target=commander, args={})
+    command_thread.start()
+
+    send_thread = threading.Thread(target=sender, args={(sock, hostname, port),})
+    send_thread.start()
+
     message = RegisterClient()
 
     message.setName("I am a test client")   
-    sock.sendto(message.pack(), (hostname, int(port)))
 
-    uid = None
-    try: 
-        data, addr = sock.recvfrom(1024)
-        print("received msg from: %s" % str(addr))
-        if int(data[1]) == ERROR:
-            msg = ErrorMsg()
-            msg.unpack(data)
-            print(msg) 
-        elif int(data[1]) == UPDATE_TETRAD:
-            msg = UpdateTetrad()
-            msg.unpack(data)
-            print(msg)
-        elif int(data[1]) == UPDATE_CLIENT_STATE:
-            msg = UpdateClientState()
-            msg.unpack(data)
-            print(msg)
-        elif int(data[1]) == REG_ACK:
-            msg = RegAck()
-            msg.unpack(data)
+    g_sendQ.put(message.pack())
 
-            uid = msg.getUid()
+    try:
+        while not g_app_exiting:
+            data = g_msgQ.get()
+            if int(data[1]) == ERROR:
+                msg = ErrorMsg()
+                msg.unpack(data)
+                print(msg) 
+            elif int(data[1]) == UPDATE_TETRAD:
+                msg = UpdateTetrad()
+                msg.unpack(data)
+                print(msg)
+            elif int(data[1]) == UPDATE_CLIENT_STATE:
+                msg = UpdateClientState()
+                msg.unpack(data)
+                print(msg)
+            elif int(data[1]) == REG_ACK:
+                msg = RegAck()
+                msg.unpack(data)
+                
+                print(msg)
+                g_sendQ.put(msg.pack())
+                
+                if g_uid == None:
+                    g_uid = msg.getUid()
+                    g_sendQ.put(ListRoom(g_uid).pack())
 
-            print(msg)
-            sock.sendto(msg.pack(), (hostname, int(port)))
+            elif int(data[1]) == ROOM_ANNOUNCE:
+                msg = RoomAnnounce()
+                msg.unpack(data)
 
-            sock.sendto(ListRoom(uid).pack(), (hostname, int(port)))
+                print(msg)
 
-            
-        else:
-            print('unrecognized pkt type')
-            print('len(data) = %lu' % (len(data),))
-            print(data)
+                g_room_list.append(msg.getRoomName())
+
+            else:
+                print('unrecognized pkt type')
+                print('len(data) = %lu' % (len(data),))
+                print(data)
 
     except KeyboardInterrupt:
-        print("Bye!")
-        exit(0)
-           
-    sock.sendto(DisconnectClient(uid).pack(), (hostname, int(port)))
+          g_app_exiting = True
+
+    if g_uid != None:
+        g_sendQ.put(DisconnectClient(g_uid).pack())
 
 if __name__=="__main__":
     main()

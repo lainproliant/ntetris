@@ -159,7 +159,7 @@ typedef struct _msg_room_announce {
     uint32_t roomId; /* The unique room identifier */
     uint8_t numPlayers; /* Number of players before game starts */
     uint8_t numJoinedPlayers; /* Number of players currently waiting */
-    bool passwordProtected; /* True if password protected */
+    uint8_t passwordProtected; /* True if password protected */
     uint8_t roomNameLen; /* Length of room name string that follows */
     char roomName[]; /* Name of the room */
 } msg_room_announce;
