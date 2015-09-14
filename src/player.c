@@ -186,6 +186,5 @@ bool authPlayerPkt(player_t *p, const struct sockaddr *from,
         return true;
     }
 
-    WARN("RETURNING FALSE");
     return false;
 }
