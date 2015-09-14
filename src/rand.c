@@ -63,3 +63,15 @@ uint8_t *getRandBytes(size_t numBytes)
 
     return retVal;
 }
+
+uint32_t genRandId(GHashTable *byId)
+{
+    /* Find a non-colliding Id, probably will not require many loops */
+    uint32_t retVal;
+
+    do {
+        retVal = getRand();
+    } while (g_hash_table_lookup(byId, GUINT_TO_POINTER(retVal)));
+
+    return retVal;
+}

@@ -1,4 +1,5 @@
 #include "packet.h"
+#include "rand.h"
 #include "room.h"
 #include "player.h"
 #include <stdlib.h>
@@ -276,7 +277,7 @@ void handle_msg(uv_work_t *req)
                 }
 
                 newPlayer = createPlayer(clientName, r->from,
-                                            genPlayerId(playersById));
+                                            genRandId(playersById));
                 g_hash_table_insert(playersByNames, clientName, newPlayer);
                 g_hash_table_insert(playersById,
                                     GINT_TO_POINTER(newPlayer->playerId), 
@@ -319,7 +320,7 @@ name_collide:
 
             if (authPlayerPkt(pkt_player, &r->from, 
                     BROWSING_ROOMS, BROWSING_ROOMS)) {
-                
+               PRINT("Creating room?\n");
             }
 
             break;

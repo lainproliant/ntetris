@@ -35,18 +35,6 @@ void destroyPlayer(player_t *p)
     free(p);
 }
 
-uint32_t genPlayerId(GHashTable *playersById)
-{
-    /* Find a non-colliding Id, probably will not require many loops */
-    uint32_t retVal;
-
-    do {
-        retVal = getRand();
-    } while (g_hash_table_lookup(playersById, GUINT_TO_POINTER(retVal)));
-
-    return retVal;
-}
-
 void pulsePlayer(msg_ping *m, const struct sockaddr *from)
 {
     uint32_t playerId = ntohl(m->playerId);
@@ -172,7 +160,7 @@ void disconnectPlayer(uint32_t id, request *r)
     if (authPlayerPkt(p, from, BROWSING_ROOMS, NUM_STATES)) {
         kickPlayerById(id, "Client requested disconnect");
     } else {
-        WARNING("Player id %u does not match IP established (%s)!\n", 
+        WARNING("Player id %u does not match IP established (%s)!", 
                 id, ipBuf);
     }
 }

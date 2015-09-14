@@ -25,17 +25,6 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     return r;
 }
 
-unsigned int genRoomId(GHashTable *roomsById)
-{
-    unsigned int retVal;
-
-    do {
-        retVal = getRand();
-    } while (g_hash_table_lookup(roomsById, GUINT_TO_POINTER(retVal)));
-
-    return retVal;
-}
-
 void kickPlayerFromRoom(gpointer p, gpointer msg)
 {
     player_t *player = (player_t*)p;
