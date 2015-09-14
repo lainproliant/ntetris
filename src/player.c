@@ -119,6 +119,7 @@ void kickPlayerById(unsigned int id, const char *reason)
     } else {
         g_hash_table_remove(playersByNames, p->name);
         g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
+        PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
         sendKickPacket(p, reason, vanillaSock);
         destroyPlayer(p);
     }
