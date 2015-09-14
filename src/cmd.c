@@ -23,17 +23,17 @@ void gh_freeplayer(gpointer k, gpointer v, gpointer d)
 /* Function to feed to g_hash_table_foreach */
 void gh_kickPlayer(gpointer k, gpointer v, gpointer d)
 {
-    sendKickPacket((player_t*)v, (const char*)d, vanillaSock);
+    sendKickPacket((player_t*)v, (const char*)d, g_server->listenSock);
     destroyPlayer((player_t*)v);
 }
 
 void killPlayers(uv_timer_t *h)
 {
-    uv_rwlock_wrlock(playerTableLock);
-    g_hash_table_foreach(playersById, (GHFunc)gh_freeplayer, NULL);
-    g_hash_table_remove_all(playersById);
-    g_hash_table_remove_all(playersByNames);
-    uv_rwlock_wrunlock(playerTableLock);
+    uv_rwlock_wrlock(g_server->playerTableLock);
+    g_hash_table_foreach(g_server->playersById, (GHFunc)gh_freeplayer, NULL);
+    g_hash_table_remove_all(g_server->playersById);
+    g_hash_table_remove_all(g_server->playersByNames);
+    uv_rwlock_wrunlock(g_server->playerTableLock);
 }
 
 void graceful_shutdown(const char *reason)
@@ -44,7 +44,7 @@ void graceful_shutdown(const char *reason)
     /* If empty or NULL string (empty if strsep used) */
     kickReason = ((reason) && strlen(reason)) ? reason : defaultReason;
 
-    g_hash_table_foreach_steal(playersById,
+    g_hash_table_foreach_steal(g_server->playersById,
                               (GHRFunc)gh_kickPlayer, 
                               (gpointer)kickReason);
 

@@ -220,7 +220,7 @@ void handle_msg(uv_work_t *req)
                 "Expected version %d, got %d :(", 
                 PROTOCOL_VERSION, pkt->version);
         createErrPacket(errPkt, BAD_PROTOCOL);
-        reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+        reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
         return;
     }
 
@@ -229,7 +229,7 @@ void handle_msg(uv_work_t *req)
         WARNING("Incorrect/unexpected packet length\n"
                 "Expected %zd bytes, got %zd bytes", ePktSize, r->len);
         createErrPacket(errPkt, BAD_LEN);
-        reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+        reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
         return;
     }
 
@@ -239,7 +239,7 @@ void handle_msg(uv_work_t *req)
         case KICK_CLIENT:
         case UPDATE_CLIENT_STATE:
             createErrPacket(errPkt, ILLEGAL_MSG);
-            reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
             return;
             break;
 
@@ -249,7 +249,7 @@ void handle_msg(uv_work_t *req)
             if (!validateName(rclient)) {
                 WARN("Non-printable or name length too long!");
                 createErrPacket(errPkt, BAD_NAME);
-                reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+                reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                 return;
             }
 
@@ -258,46 +258,52 @@ void handle_msg(uv_work_t *req)
             strlcpy(clientName, rclient->name, rclient->nameLength + 1);
 
             /* If this far, name meets requirements, now check for collisions */
-            uv_rwlock_rdlock(playerTableLock);
+            uv_rwlock_rdlock(g_server->playerTableLock);
 
             /* If there's no player with that name
              * Note: contains is probably a faster function for this but Oracle
              * and illumos both do not distribute very modern versions of glib
              * which contain these variants */
-            if (!g_hash_table_lookup(playersByNames, clientName)) {
-                uv_rwlock_rdunlock(playerTableLock);
+            if (!g_hash_table_lookup(g_server->playersByNames, clientName)) {
+                uv_rwlock_rdunlock(g_server->playerTableLock);
                 
                 /* Make sure nothing can read or write to this but us */
-                uv_rwlock_wrlock(playerTableLock);
+                uv_rwlock_wrlock(g_server->playerTableLock);
 
-                if (g_hash_table_lookup(playersByNames, clientName)) {
+                if (g_hash_table_lookup(g_server->playersByNames, clientName)) {
                     WARN("Somebody took our name while waiting for lock");
-                    uv_rwlock_wrunlock(playerTableLock);
+                    uv_rwlock_wrunlock(g_server->playerTableLock);
                     goto name_collide;
                 }
 
                 newPlayer = createPlayer(clientName, r->from,
-                                            genRandId(playersById));
-                g_hash_table_insert(playersByNames, clientName, newPlayer);
-                g_hash_table_insert(playersById,
+                                            genRandId(g_server->playersById));
+
+                g_hash_table_insert(g_server->playersByNames, 
+                                    clientName,
+                                    newPlayer);
+
+                g_hash_table_insert(g_server->playersById,
                                     GINT_TO_POINTER(newPlayer->playerId), 
                                     newPlayer);
 
-                uv_rwlock_wrunlock(playerTableLock);
+                uv_rwlock_wrunlock(g_server->playerTableLock);
 
                 PRINT("Registering client %s\n", newPlayer->name);
                 m_ack.curPlayerId = htonl(newPlayer->playerId);
                 ackPack->type = REG_ACK;
                 memcpy(ackPack->data, &m_ack, sizeof(msg_reg_ack));
-                reply(ackPack, sizeof(ackPackBuf), &r->from, vanillaSock);
+
+                reply(ackPack, sizeof(ackPackBuf),
+                      &r->from, g_server->listenSock);
 
             } else { /* Name collision, send back error */
-                uv_rwlock_rdunlock(playerTableLock);
+                uv_rwlock_rdunlock(g_server->playerTableLock);
 name_collide:
                 WARNING("Name collision for %s", clientName);
                 free(clientName);
                 createErrPacket(errPkt, BAD_NAME);
-                reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+                reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                 return;
             }
 
@@ -311,7 +317,7 @@ name_collide:
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
                 WARN("Non-printable or too long room name from %s!", senderIP);
                 createErrPacket(errPkt, BAD_NAME);
-                reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+                reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                 return;
             }
 
@@ -351,7 +357,7 @@ name_collide:
                 PRINT(BOLDCYAN "PLAYER SUCCESSFULLY REQUESTED ROOMS!\n" RESET);
                 announceRooms(&r->from);
             } else {
-                uv_ip4_name((const struct sockaddr_in*)&(r->from), senderIP, 16);
+                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
                 WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
                         " is invalid for given player state", 
                         incomingId, senderIP);
@@ -362,7 +368,7 @@ name_collide:
         default:
             WARNING("Unhandled packet type!!!! (%d)", packetType);
             createErrPacket(errPkt, UNSUPPORTED_MSG);
-            reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
+            reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
             return;
             break;
     }

@@ -29,7 +29,7 @@ void kickPlayerFromRoom(gpointer p, gpointer msg)
 {
     player_t *player = (player_t*)p;
     const char *kmsg = (const char*)msg;
-    sendKickPacket(p, kmsg, vanillaSock);
+    sendKickPacket(p, kmsg, g_server->listenSock);
 
     destroyPlayer(p);
 }

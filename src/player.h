@@ -8,19 +8,14 @@
 #include <stdint.h>
 #include <uv.h>
 #include <stdbool.h>
+#include "server.h"
 
 /* Use forward declarations instead, can prevent some later headaches */
 struct _msg_ping;
 struct _msg_reg_ack;
 struct _request;
 
-/* Global rwlocks for thread safety on these shared objects */
-extern uv_rwlock_t *playerTableLock;
-
-/* Hashtables for storing the players - may eventually store
- * these in a srvstate_t or some such object */
-extern GHashTable *playersByNames;
-extern GHashTable *playersById;
+extern server_t *g_server;
 
 /* These represent all the various possible states the player
  * can be represented by in the somewhat simple game state machine.

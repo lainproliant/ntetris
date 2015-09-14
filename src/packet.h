@@ -7,11 +7,12 @@
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <uv.h>
+#include "server.h"
 
 /* Forward declaration of player_t */
 struct _player_t;
 
-extern int vanillaSock;
+extern server_t *g_server;
 
 #define PROTOCOL_VERSION 0
 #define MAX_NAMELEN 30

@@ -40,8 +40,8 @@ void pulsePlayer(msg_ping *m, const struct sockaddr *from)
     uint32_t playerId = ntohl(m->playerId);
     player_t *p = NULL;
 
-    uv_rwlock_rdlock(playerTableLock);
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
+    uv_rwlock_rdlock(g_server->playerTableLock);
+    p = g_hash_table_lookup(g_server->playersById, GUINT_TO_POINTER(playerId));
 
     /* Not sure this is a great way to compare addr, hopefully padding
        isn't unitialized memory or something */
@@ -51,7 +51,7 @@ void pulsePlayer(msg_ping *m, const struct sockaddr *from)
         WARNING("Player with id %u not found or"
                 " message was sent from invalid addr", playerId);
     }
-    uv_rwlock_rdunlock(playerTableLock);
+    uv_rwlock_rdunlock(g_server->playerTableLock);
 }
 
 void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
@@ -59,8 +59,8 @@ void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
     uint32_t playerId = ntohl(m->curPlayerId);
     player_t *p = NULL;
 
-    uv_rwlock_rdlock(playerTableLock);
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(playerId));
+    uv_rwlock_rdlock(g_server->playerTableLock);
+    p = g_hash_table_lookup(g_server->playersById, GUINT_TO_POINTER(playerId));
 
     if (authPlayerPkt(p, from, AWAITING_CLIENT_ACK, AWAITING_CLIENT_ACK)) {
     /* Not sure this is a great way to compare addr, hopefully padding
@@ -71,48 +71,48 @@ void regPlayer(msg_reg_ack *m, const struct sockaddr *from)
                 " message was sent from invalid addr"
                 " or player was in inconsistent state", playerId);
     }
-    uv_rwlock_rdunlock(playerTableLock);
+    uv_rwlock_rdunlock(g_server->playerTableLock);
 }
 
 void kickPlayerByName(const char *name) 
 {
-    uv_rwlock_wrlock(playerTableLock);
+    uv_rwlock_wrlock(g_server->playerTableLock);
     player_t *p = NULL;
-    p = g_hash_table_lookup(playersByNames, name);
+    p = g_hash_table_lookup(g_server->playersByNames, name);
 
     if (p == NULL) {
         WARNING("Player %s not found", name);
     } else {
         // kick packet logic goes here 
-        g_hash_table_remove(playersByNames, name);
-        g_hash_table_remove(playersById, GUINT_TO_POINTER(p->playerId));
+        g_hash_table_remove(g_server->playersByNames, name);
+        g_hash_table_remove(g_server->playersById, GUINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
 
-        sendKickPacket(p, (const char*)NULL, vanillaSock);
+        sendKickPacket(p, (const char*)NULL, g_server->listenSock);
 
         destroyPlayer(p);
     }
 
-    uv_rwlock_wrunlock(playerTableLock);
+    uv_rwlock_wrunlock(g_server->playerTableLock);
 }
 
 void kickPlayerById(unsigned int id, const char *reason)
 {
-    uv_rwlock_wrlock(playerTableLock);
+    uv_rwlock_wrlock(g_server->playerTableLock);
     player_t *p = NULL;
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
+    p = g_hash_table_lookup(g_server->playersById, GUINT_TO_POINTER(id));
 
     if (p == NULL) {
         WARNING("Player id: %u not found", id);
     } else {
-        g_hash_table_remove(playersByNames, p->name);
-        g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
+        g_hash_table_remove(g_server->playersByNames, p->name);
+        g_hash_table_remove(g_server->playersById, GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
-        sendKickPacket(p, reason, vanillaSock);
+        sendKickPacket(p, reason, g_server->listenSock);
         destroyPlayer(p);
     }
 
-    uv_rwlock_wrunlock(playerTableLock);
+    uv_rwlock_wrunlock(g_server->playerTableLock);
 }
 
 void printPlayer(gpointer k, gpointer v, gpointer d)
@@ -130,8 +130,8 @@ void printPlayer(gpointer k, gpointer v, gpointer d)
 
 void printPlayers()
 {
-    uv_rwlock_rdlock(playerTableLock);
-    size_t numPlayers = g_hash_table_size(playersById);
+    uv_rwlock_rdlock(g_server->playerTableLock);
+    size_t numPlayers = g_hash_table_size(g_server->playersById);
 
     if (numPlayers == 0) {
         WARN("[0 players found]");
@@ -142,11 +142,11 @@ void printPlayers()
             "Player IP", "TTL", "STATE");
         PRINT("-----------------------------------------"
               "---------------------------------------\n" RESET);
-        g_hash_table_foreach(playersById, 
+        g_hash_table_foreach(g_server->playersById, 
             (GHFunc)printPlayer, NULL);
     }
     
-    uv_rwlock_rdunlock(playerTableLock);
+    uv_rwlock_rdunlock(g_server->playerTableLock);
 }
 
 void disconnectPlayer(uint32_t id, request *r)

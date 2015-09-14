@@ -22,13 +22,12 @@
 #include "player.h"
 #include "macros.h"
 #include "cmd.h"
+#include "server.h"
 
 #define DEFAULT_PORT 48879
 
-static uv_udp_t g_recv_sock;
 static uv_fs_t stdin_watcher;
 
-int vanillaSock;
 static char buffer[200];
 static uv_buf_t ioVec;
 
@@ -42,9 +41,10 @@ static uv_buf_t ioVec;
 FILE *randFile = NULL;
 
 /* Put rw locks here */
-uv_rwlock_t *playerTableLock = NULL;
+/*uv_rwlock_t *playerTableLock = NULL;
 GHashTable *playersByNames = NULL;
-GHashTable *playersById = NULL;
+GHashTable *playersById = NULL;*/
+server_t *g_server = NULL;
 
 gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
 {
@@ -53,10 +53,10 @@ gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)
     p->secBeforeNextPingMax -= GPOINTER_TO_INT(d);
 
     if (p->secBeforeNextPingMax <= 0) {
-        sendKickPacket(p, kickMsg, vanillaSock);
+        sendKickPacket(p, kickMsg, g_server->listenSock);
 
         /* Remove from the other hashtable before freeing */
-        g_hash_table_remove(playersByNames, p->name);
+        g_hash_table_remove(g_server->playersByNames, p->name);
 
         destroyPlayer(p);
 
@@ -74,11 +74,11 @@ void destroy_expire_work_t(uv_work_t *w, int status)
 void expireStaleUsersDispatch(uv_work_t *w)
 {
     uv_timer_t *h = (uv_timer_t*)w->data;
-    uv_rwlock_wrlock(playerTableLock);
-    g_hash_table_foreach_steal(playersById,
+    uv_rwlock_wrlock(g_server->playerTableLock);
+    g_hash_table_foreach_steal(g_server->playersById,
                               (GHRFunc)gh_subtractSeconds, 
                               GINT_TO_POINTER(h->repeat / 1000));
-    uv_rwlock_wrunlock(playerTableLock);
+    uv_rwlock_wrunlock(g_server->playerTableLock);
 }
 
 void expireStaleUsers(uv_timer_t *h)
@@ -179,7 +179,6 @@ int main(int argc, char *argv[])
     int go_ret;
     int port = DEFAULT_PORT;
     const char *stn_err_str = NULL;
-    struct sockaddr_in recaddr;
 
     static struct option longopts[] = {
         {"port",      required_argument,     NULL,     'p'},
@@ -210,46 +209,21 @@ int main(int argc, char *argv[])
      * queue of messages when the worker thread has completed.  For now
      * we'll try the raw socket approach */
 
-    playerTableLock = malloc(sizeof(uv_rwlock_t));
-    uv_rwlock_init(playerTableLock);
-
-    /* Hopefully no collisions on playersById */
-    playersById = g_hash_table_new(NULL, NULL);
-    playersByNames = g_hash_table_new(g_str_hash, g_str_equal);
-
-    uv_loop_t *loop = uv_default_loop();
-    uv_udp_init(loop, &g_recv_sock);
-    uv_idle_t idler;
-    uv_idle_init(loop, &idler);
-    uv_idle_start(&idler, idler_task);
+    g_server = initializeServer("0.0.0.0", port);
+    uv_idle_start(&g_server->idler, idler_task);
 
     ioVec = uv_buf_init(buffer, 200);
     memset(buffer, 0, sizeof(buffer));
 
-    uv_fs_read(loop, &stdin_watcher, 0, &ioVec, 1, -1, on_type);
+    uv_fs_read(g_server->mainLoop, &stdin_watcher, 0, &ioVec, 1, -1, on_type);
+    uv_timer_start(&g_server->timer_req, expireStaleUsers, 15000, 15000);
 
-    /* TODO: remove these, they are for testing */
-    uv_timer_t timer_req;
-    //uv_timer_t timer_req2;
+    uv_udp_recv_start(&g_server->recv_sock, malloc_cb, onrecv);
 
-    uv_timer_init(loop, &timer_req);
-    //uv_timer_init(loop, &timer_req2);
-    uv_timer_start(&timer_req, expireStaleUsers, 15000, 15000);
-    //uv_timer_start(&timer_req2, killPlayers, 80000, 80000);
-    /* end remove */
-
-    uv_ip4_addr("0.0.0.0", port, &recaddr);
-    uv_udp_bind(&g_recv_sock, (const struct sockaddr*)&recaddr, UV_UDP_REUSEADDR);
-
-
-    uv_udp_recv_start(&g_recv_sock, malloc_cb, onrecv);
-
-    /* "Bind" to this so outbound is the same the socket was received over */
-    vanillaSock = g_recv_sock.io_watcher.fd;
-    uv_run(loop, UV_RUN_DEFAULT);
+    uv_run(g_server->mainLoop, UV_RUN_DEFAULT);
 
     /* state cleanup */
-    uv_loop_close(uv_default_loop());
+    uv_loop_close(g_server->mainLoop);
 
     return 0;
 }
