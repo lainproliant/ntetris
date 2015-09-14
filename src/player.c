@@ -119,7 +119,6 @@ void kickPlayerById(unsigned int id, const char *reason)
     } else {
         g_hash_table_remove(playersByNames, p->name);
         g_hash_table_remove(playersById, GINT_TO_POINTER(p->playerId));
-        PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
         sendKickPacket(p, reason, vanillaSock);
         destroyPlayer(p);
     }
@@ -167,15 +166,12 @@ void disconnectPlayer(uint32_t id, request *r)
     const struct sockaddr *from = &r->from;
     char ipBuf[20];
     uv_ip4_name((const struct sockaddr_in*)(from), ipBuf, 19);
-    uv_rwlock_rdlock(playerTableLock);
-    
-    p = g_hash_table_lookup(playersById, GUINT_TO_POINTER(id));
-    uv_rwlock_rdunlock(playerTableLock);
+    GETPBYID(id, p);
 
     if (authPlayerPkt(p, from, BROWSING_ROOMS, NUM_STATES)) {
         kickPlayerById(id, "Client requested disconnect");
     } else {
-        WARNING("Player id %d does not match IP established (%s)!\n", 
+        WARNING("Player id %u does not match IP established (%s)!\n", 
                 id, ipBuf);
     }
 }
@@ -184,10 +180,11 @@ bool authPlayerPkt(player_t *p, const struct sockaddr *from,
                    PLAYER_STATE min, PLAYER_STATE max)
 {
     if (p != NULL && 
-        !memcmp(p->playerAddr.sa_data, from->sa_data, sizeof(from->sa_data)) &&
-        min == NUM_STATES || (p->state >= min && p->state <= max)) {
+        (!memcmp(p->playerAddr.sa_data, from->sa_data, sizeof(from->sa_data)) &&
+        min == NUM_STATES || (p->state >= min && p->state <= max))) {
         return true;
     }
 
+    WARN("RETURNING FALSE");
     return false;
 }

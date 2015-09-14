@@ -205,7 +205,7 @@ void handle_msg(uv_work_t *req)
     msg_disconnect_client *m_dc = NULL;
     msg_list_rooms *m_lr = NULL;
     uint32_t incomingId;
-    char senderIP[20] = { 0 };
+    char senderIP[17] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
     uint8_t errPktBuf[ERRMSG_SIZE];
@@ -307,7 +307,7 @@ name_collide:
             croom = (msg_create_room*)(pkt->data);
             
             if (!validateRoomName(croom)) {
-                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 19);
+                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
                 WARN("Non-printable or too long room name from %s!", senderIP);
                 createErrPacket(errPkt, BAD_NAME);
                 reply(errPkt, ERRMSG_SIZE, &r->from, vanillaSock);
@@ -344,17 +344,19 @@ name_collide:
             incomingId = ntohl(m_lr->playerId);
             
             GETPBYID(incomingId, pkt_player);
+
             if (authPlayerPkt(pkt_player, &r->from, 
                     BROWSING_ROOMS, BROWSING_ROOMS)) {
                 PRINT(BOLDCYAN "PLAYER SUCCESSFULLY REQUESTED ROOMS!\n" RESET);
                 announceRooms(&r->from);
             } else {
-                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 19);
+                uv_ip4_name((const struct sockaddr_in*)&(r->from), senderIP, 16);
                 WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
                         " is invalid for given player state", 
                         incomingId, senderIP);
             }
              
+            return;
             break; 
         default:
             WARNING("Unhandled packet type!!!! (%d)", packetType);
