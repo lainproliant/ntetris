@@ -85,7 +85,8 @@ void kickPlayerByName(const char *name)
     } else {
         // kick packet logic goes here 
         g_hash_table_remove(g_server->playersByNames, name);
-        g_hash_table_remove(g_server->playersById, GUINT_TO_POINTER(p->playerId));
+        g_hash_table_remove(g_server->playersById, 
+                            GUINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, name);
 
         sendKickPacket(p, (const char*)NULL, g_server->listenSock);
@@ -106,7 +107,8 @@ void kickPlayerById(unsigned int id, const char *reason)
         WARNING("Player id: %u not found", id);
     } else {
         g_hash_table_remove(g_server->playersByNames, p->name);
-        g_hash_table_remove(g_server->playersById, GINT_TO_POINTER(p->playerId));
+        g_hash_table_remove(g_server->playersById, 
+                            GINT_TO_POINTER(p->playerId));
         PRINT("Kicked player [%u] (%s)\n", p->playerId, p->name);
         sendKickPacket(p, reason, g_server->listenSock);
         destroyPlayer(p);

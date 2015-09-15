@@ -112,7 +112,8 @@ void on_type(uv_fs_t *req)
     if (req->result > 0) {
         //ioVec.len = req->result;
         parse_cmd(buffer);
-        uv_fs_read(uv_default_loop(), &stdin_watcher, 0, &ioVec, 1, -1, on_type);
+        uv_fs_read(g_server->mainLoop,&stdin_watcher, 0, 
+                   &ioVec, 1, -1, on_type);
         memset(buffer, 0, strlen(buffer));
     }
 }
