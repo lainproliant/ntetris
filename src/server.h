@@ -11,6 +11,7 @@ typedef struct _server_t {
    GHashTable *playersByNames; /* protected by playerTableLock */
    GHashTable *playersById; /* protected by playerTableLock */
    GHashTable *roomsById; /* protected by roomsLock */
+   GHashTable *roomsByName; /* protected by roomsLock */
    uv_rwlock_t *playerTableLock; /* player lists rw_lock */
    uv_rwlock_t *roomsLock;
    uv_loop_t *mainLoop;

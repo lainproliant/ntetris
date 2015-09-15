@@ -40,10 +40,7 @@ static uv_buf_t ioVec;
  * varied enough and not ridiculously predictable */
 FILE *randFile = NULL;
 
-/* Put rw locks here */
-/*uv_rwlock_t *playerTableLock = NULL;
-GHashTable *playersByNames = NULL;
-GHashTable *playersById = NULL;*/
+/* global server state */
 server_t *g_server = NULL;
 
 gboolean gh_subtractSeconds(gpointer k, gpointer v, gpointer d)

@@ -11,6 +11,9 @@ server_t *initializeServer(const char *ipaddr, int port)
     retVal->playersById = g_hash_table_new(NULL, NULL);
     retVal->playersByNames = g_hash_table_new(g_str_hash, g_str_equal);
 
+    retVal->roomsById = g_hash_table_new(NULL, NULL);
+    retVal->roomsByName = g_hash_table_new(g_str_hash, g_str_equal);
+
     /* initialize rwlocks */
     retVal->playerTableLock = malloc(sizeof(uv_rwlock_t));
     retVal->roomsLock = malloc(sizeof(uv_rwlock_t));

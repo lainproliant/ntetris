@@ -13,6 +13,7 @@
 /* Use forward declarations instead, can prevent some later headaches */
 struct _msg_ping;
 struct _msg_reg_ack;
+struct _msg_register_client;
 struct _request;
 
 extern server_t *g_server;
@@ -51,5 +52,6 @@ void printPlayer(gpointer k, gpointer v, gpointer d);
 void printPlayers();
 bool authPlayerPkt(player_t *p, const struct sockaddr *from, 
                    PLAYER_STATE min, PLAYER_STATE max);
+bool validateName(struct _msg_register_client *m);
 
 #endif

@@ -34,6 +34,7 @@ typedef enum _MSG_TYPE {
     PING, /* Client pings back to the server to prevent auto timeout */
     GAME_OVER, /* Game for the room has ended, notifies client of result */
     OPPONENT_ANNOUNCE, /* Opponent info from a given room */
+    ROOM_SUCCESS, /* Room created / joined sucessfully */
     NUM_MESSAGES
 } MSG_TYPE;
 
@@ -59,6 +60,7 @@ typedef enum _ERROR_CODE {
    BAD_NAME = 5, /* The user's namestr is too long or stupid */
    BAD_ROOM_NAME = 6, /* The user room name is too long or stupid */
    SUCCESS = 7, /* Just here for debugging the replies, will remove */
+   BAD_PASSWORD = 8, /* The password was incorrect for the room */
    NUM_ERR_CODES
 } ERR_CODE;
 
@@ -94,10 +96,25 @@ typedef struct _msg_register_client {
 
 #pragma pack(1)
 typedef struct _msg_update_tetrad {
-    int x, y;
-    int x0, y0;
-    int rot;
+    int32_t x, y;
+    int32_t x0, y0;
+    int32_t rot;
 } msg_update_tetrad;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_room_success {
+    uint32_t roomId;
+    uint32_t joinedIds[];
+} msg_room_success;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_opponent_announce {
+    uint32_t playerId;
+    uint8_t nameLength;
+    char playerName[];
+} msg_opponent_announce;
 #pragma pop
 
 #pragma pack(1)

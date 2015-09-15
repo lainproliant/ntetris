@@ -3,6 +3,8 @@
 #include "macros.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include <ctype.h>
 #include "rand.h"
 
 #ifdef __linux__
@@ -177,4 +179,21 @@ bool authPlayerPkt(player_t *p, const struct sockaddr *from,
     }
 
     return false;
+}
+
+bool validateName(msg_register_client *m)
+{
+    size_t i;
+
+    if (m->nameLength > MAX_NAMELEN || m->nameLength == 0) {
+        return false;
+    } else {
+        for (i = 0; i < m->nameLength; ++i) {
+            if (!isprint(m->name[i])) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }

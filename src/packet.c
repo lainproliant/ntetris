@@ -7,7 +7,6 @@
 #include <string.h>
 #include "macros.h"
 #include <errno.h>
-#include <ctype.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
@@ -131,38 +130,6 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
             return (len == totalBytes);
 }
 
-bool validateName(msg_register_client *m)
-{
-    size_t i;
-
-    if (m->nameLength > MAX_NAMELEN || m->nameLength == 0) {
-        return false;
-    } else {
-        for (i = 0; i < m->nameLength; ++i) {
-            if (!isprint(m->name[i])) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-bool validateRoomName(msg_create_room *m)
-{
-    if (m->roomNameLen > MAX_NAMELEN || m->roomNameLen == 0) {
-        return false;
-    } 
-
-    for (size_t i = 0; i < m->roomNameLen; ++i) {
-        if (!isprint(m->roomNameAndPass[i])) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 void sendKickPacket(player_t *p, const char *reason, int sock)
 {
     packet_t *m = NULL;
@@ -198,6 +165,7 @@ void handle_msg(uv_work_t *req)
     msg_register_client *rclient = NULL;
     msg_create_room *croom = NULL;
     char *clientName = NULL;
+    char *roomName = NULL;
     player_t *newPlayer = NULL;
     player_t *pkt_player = NULL;
     msg_reg_ack m_ack;
@@ -205,6 +173,7 @@ void handle_msg(uv_work_t *req)
     msg_ping *m_recPing = NULL;
     msg_disconnect_client *m_dc = NULL;
     msg_list_rooms *m_lr = NULL;
+    room_t *newRoom = NULL;
     uint32_t incomingId;
     char senderIP[17] = { 0 };
 
@@ -284,7 +253,7 @@ void handle_msg(uv_work_t *req)
                                     newPlayer);
 
                 g_hash_table_insert(g_server->playersById,
-                                    GINT_TO_POINTER(newPlayer->playerId), 
+                                    GUINT_TO_POINTER(newPlayer->playerId), 
                                     newPlayer);
 
                 uv_rwlock_wrunlock(g_server->playerTableLock);
@@ -326,9 +295,44 @@ name_collide:
 
             if (authPlayerPkt(pkt_player, &r->from, 
                     BROWSING_ROOMS, BROWSING_ROOMS)) {
-               PRINT("Creating room?\n");
+                /* Check for a room name collision */
+                roomName = malloc(croom->roomNameLen + 1);
+                strlcpy(roomName, croom->roomNameAndPass, croom->roomNameLen+1);
+
+                uv_rwlock_rdlock(g_server->roomsLock);
+
+                if (!g_hash_table_lookup(g_server->roomsByName, roomName)) {
+                    uv_rwlock_rdunlock(g_server->roomsLock);
+
+                    uv_rwlock_wrlock(g_server->roomsLock);
+                    if (g_hash_table_lookup(g_server->roomsByName,
+                                             roomName)) {
+                        WARN("Somebody stole room name while waiting for lock");
+                        uv_rwlock_wrunlock(g_server->roomsLock);
+                        goto room_name_collide;
+                    }
+
+                    newRoom = createRoom(croom, genRandId(g_server->roomsById));
+
+                    g_hash_table_insert(g_server->roomsByName, 
+                                        roomName, newRoom);
+
+                    g_hash_table_insert(g_server->roomsById,
+                                        GUINT_TO_POINTER(newRoom->id),
+                                        newRoom);
+                    uv_rwlock_wrunlock(g_server->roomsLock);
+                } else {
+                    uv_rwlock_rdunlock(g_server->roomsLock);
+room_name_collide:
+                    WARNING("Room name collision for %s", roomName);
+                    free(roomName);
+                    createErrPacket(errPkt, BAD_ROOM_NAME);
+                    reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
+                    return;
+                }
             }
 
+            return;
             break;
 
         case REG_ACK:

@@ -2,6 +2,7 @@
 #include "player.h"
 #include "packet.h"
 #include "macros.h"
+#include "room.h"
 
 #include <strings.h>
 #include <string.h>
@@ -63,7 +64,10 @@ void parse_cmd(const char *cmd)
     unsigned int id;
 
     if (!strncmp(srvcmd, "lsplayers", 9)) {
-        printPlayers(NULL);
+        printPlayers();
+    } else if (!strncmp(srvcmd, "lsrooms", 7)) {
+        PRINT("Parsing printrooms\n");
+        printRooms();
     } else if (!strncmp(srvcmd, "kickname", 8)) {
         pNameOrId = strsep((char**)&cmd, "\n");
         kickPlayerByName(pNameOrId);
