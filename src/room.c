@@ -50,6 +50,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     }
 
     r->state = WAITING_FOR_PLAYERS;
+    r->numPlayers = m->numPlayers;
     r->id = id;
 
     return r;
