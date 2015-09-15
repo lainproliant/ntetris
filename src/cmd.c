@@ -66,7 +66,6 @@ void parse_cmd(const char *cmd)
     if (!strncmp(srvcmd, "lsplayers", 9)) {
         printPlayers();
     } else if (!strncmp(srvcmd, "lsrooms", 7)) {
-        PRINT("Parsing printrooms\n");
         printRooms();
     } else if (!strncmp(srvcmd, "kickname", 8)) {
         pNameOrId = strsep((char**)&cmd, "\n");
