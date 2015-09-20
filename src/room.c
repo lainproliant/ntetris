@@ -30,7 +30,7 @@ packet_t *createRoomAnnouncement(room_t *r, size_t *packSize)
     msg->passwordProtected = (uint8_t)(r->password != NULL);
     msg->roomNameLen = strlen(r->name);
 
-    strlcpy(msg->roomName, msg->roomName, msg->roomNameLen);
+    strlcpy(msg->roomName, r->name, msg->roomNameLen);
 
     *packSize = packetSize;
 
@@ -81,6 +81,7 @@ void gh_announceRoom(gpointer k, gpointer v, gpointer d)
     room_t *r = (room_t*)v; 
     uint32_t roomId = GPOINTER_TO_UINT(k);
     packet_t *p = NULL;
+    msg_room_announce *m = NULL;
     size_t size;
 
     const struct sockaddr *recipient = (const struct sockaddr*)d;
@@ -88,6 +89,8 @@ void gh_announceRoom(gpointer k, gpointer v, gpointer d)
     if (r->state == WAITING_FOR_PLAYERS) {
        p = createRoomAnnouncement(r, &size);
        reply(p, size, recipient, g_server->listenSock); 
+       m = (msg_room_announce*)p->data; 
+       free(m->roomName);
        free(p);
     }
 }
