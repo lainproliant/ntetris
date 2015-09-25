@@ -170,22 +170,15 @@ class RoomAnnounce(Message):
     length = 18
 
     def unpack(self,msg):
-        (self.version, 
-         self.type, 
-         self.roomId,
-         self.numPlayers,
-         self.numJoinedPlayers,
-         self.passwordProtected,
-         self.roomNameLen) = struct.unpack("!BBIBBBB",msg)
+        (self.version,\
+        self.type,\
+        self.roomId,\
+        self.numPlayers,\
+        self.numJoinedPlayers,\
+        self.passwordProtected,\
+        self.roomNameLen,) = struct.unpack_from('!BBIBBBB', msg)
+        self.roomName = struct.unpack_from('!%ds' % self.roomNameLen, msg, offset=10)[0]
 
-        (self.version, 
-         self.type, 
-         self.roomId,
-         self.numPlayers,
-         self.numJoinedPlayers,
-         self.passwordProtected,
-         self.roomNameLen,
-         self.roomName) = struct.unpack("!BBIBBBB%ds" % self.roomNameLen,msg)
     def __str__(self):
         return "ROOM ANNOUNCE: %s %d/%d %s" % (self.roomName,
                                                self.numJoinedPlayers,
