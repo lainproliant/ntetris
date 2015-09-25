@@ -30,7 +30,7 @@ packet_t *createRoomAnnouncement(room_t *r, size_t *packSize)
     msg->passwordProtected = (uint8_t)(r->password != NULL);
     msg->roomNameLen = strlen(r->name);
 
-    strlcpy(msg->roomName, r->name, msg->roomNameLen);
+    memcpy(msg->roomName, r->name, msg->roomNameLen);
 
     *packSize = packetSize;
 
@@ -52,6 +52,11 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     r->state = WAITING_FOR_PLAYERS;
     r->numPlayers = m->numPlayers;
     r->id = id;
+
+    player_t *creator = NULL;
+    GETPBYID(m->playerId, creator);
+
+    r->players = g_slist_append(r->players, creator);
 
     return r;
 }
@@ -90,7 +95,6 @@ void gh_announceRoom(gpointer k, gpointer v, gpointer d)
        p = createRoomAnnouncement(r, &size);
        reply(p, size, recipient, g_server->listenSock); 
        m = (msg_room_announce*)p->data; 
-       free(m->roomName);
        free(p);
     }
 }
@@ -124,8 +128,8 @@ void printRoom(gpointer k, gpointer v, gpointer d)
     room_t *r = (room_t*)v;
     size_t numPlayers = g_slist_length(r->players);
      
-    PRINT("%-30s %-17u %10u / %d\n", r->name, r->id, 
-            numPlayers, r->numPlayers);
+    PRINT("%-30s %-17u %10u / %d %-8d\n", r->name, r->id, 
+            numPlayers, r->numPlayers, r->state);
 }
 
 void printRooms()
@@ -137,8 +141,8 @@ void printRooms()
         WARN("[0 rooms found]");
     } else {
         PRINT("RoomList (%lu rooms) = \n", numRooms);
-        PRINT(BOLDGREEN "%-30s %-17s %-10s\n",
-             "Room Name", "RoomId", "Players Joined");
+        PRINT(BOLDGREEN "%-30s %-17s %-10s %-8s\n",
+             "Room Name", "RoomId", "Players Joined", "Room State");
         PRINT("-----------------------------------------"
               "---------------------------------------\n" RESET);
         g_hash_table_foreach(g_server->roomsById,
