@@ -41,6 +41,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
 {
     room_t *r = calloc(1, sizeof(room_t));
     r->name = calloc(m->roomNameLen + 1, sizeof(char));
+    uv_rwlock_init(&r->roomLock);
 
     strlcpy(r->name, m->roomNameAndPass, m->roomNameLen + 1);
 
@@ -56,9 +57,11 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
 
     player_t *creator = NULL;
     GETPBYID(m->playerId, creator);
-    uv_rwlock_init(&r->roomLock);
 
+    uv_rwlock_wrlock(&creator->playerLock);
     r->players = g_slist_prepend(r->players, creator);
+    creator->state = JOINED_AND_WAITING;
+    uv_rwlock_wrunlock(&creator->playerLock);
 
     return r;
 }
@@ -105,7 +108,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     }
 
     uv_rwlock_wrlock(&p->playerLock);
-    g_slist_prepend(r->players, p);
+    r->players = g_slist_prepend(r->players, p);
 
     if (g_slist_length(r->players) == r->numPlayers) {
         r->state = IN_PROGRESS;
