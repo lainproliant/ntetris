@@ -4,7 +4,7 @@ import sys
 pkg_config_cmd = "pkg-config"
 srvliblist = ['glib-2.0', 'uv']
 liblist = ['glib-2.0', 'ncurses']
-cflags = '-mcpu=750 -mtune=750 -O3 -I/usr/local/include'
+cflags = '-I/usr/local/include'
 linkflags = '-L/usr/local/lib'
 
 ntetris_cfiles = ['tetris.c', ]
