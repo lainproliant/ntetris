@@ -164,6 +164,29 @@ class CreateRoom(Message):
         return "New Room: %s %d %s" % (self.roomName,
                                        self.nPlayers,
                                        self.password)
+
+class JoinRoom(Message):
+    type = JOIN_ROOM
+    length = 5
+
+    def __init__(self, uid, rid, password = ''):
+        self.uid = uid
+        self.password = password
+        self.rid = rid
+
+    def pack(self):
+        string_len = len(self.password)
+        self.length = self.length + string_len
+        return struct.pack("!BBIIB%ds" % string_len,
+                                        self.version,
+                                        self.type,
+                                        self.uid,
+                                        self.rid,
+                                        len(self.password),
+                                        bytes(self.password, 'utf-8'))
+
+    def __str__(self):
+        return "Join Room: id=%d" % (self.rid)
    
 class RoomAnnounce(Message):
     type = ROOM_ANNOUNCE
@@ -187,14 +210,13 @@ class RoomAnnounce(Message):
     def getRoomName(self):
         return str(self.roomName)
 
-
-
 class UserAction(Message):
     type = USER_ACTION
     length = 8
 
     def setCmd(self, cmd):
         self.cmd = cmd
+
 class ErrorMsg(Message):
     type = ERROR
     
