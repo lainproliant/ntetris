@@ -54,7 +54,7 @@
 #define GETRBYID(id, pkt_room) \
     do { \
             uv_rwlock_rdlock(g_server->roomsLock); \
-            pkt_player = g_hash_table_lookup(g_server->roomsById, \
+            pkt_room = g_hash_table_lookup(g_server->roomsById, \
                                              GUINT_TO_POINTER(id)); \
             uv_rwlock_rdunlock(g_server->roomsLock); \
     } while (0)
