@@ -207,12 +207,15 @@ class RoomAnnounce(Message):
         self.roomName = struct.unpack_from('!%ds' % self.roomNameLen, msg, offset=10)[0]
 
     def __str__(self):
-        return "ROOM ANNOUNCE: %s %d/%d %s" % (self.roomName,
+        return "\t\tROOM ANNOUNCE: %d %s %d/%d %s" % (self.roomId,
+                                               self.roomName,
                                                self.numJoinedPlayers,
                                                self.numPlayers,
                                                "LOCKED" if self.passwordProtected else "OPEN")
     def getRoomName(self):
         return str(self.roomName)
+    def getId(self):
+        return int(self.roomId)
 
 class Ping(Message):
     type = PING

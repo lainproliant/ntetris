@@ -13,7 +13,7 @@ g_msgQ = queue.Queue()
 g_sendQ = queue.Queue()
 
 g_app_exiting = False
-g_room_list = []
+g_room_dict = {}
 
 g_uid = None
 
@@ -78,8 +78,8 @@ def commander():
         
         if data == "ls":
             print("Rooms:")
-            for room in g_room_list:
-                print(room)
+            for room in g_room_dict:
+                print(g_room_dict[room])
         if data == "create" and g_uid != None:
             name = input("Name: ")
             numPlayers = input("Number of players: ")
@@ -92,7 +92,10 @@ def commander():
             msg = ListRoom(g_uid)
             g_sendQ.put(msg.pack())
         if data == "join" and g_uid != None:
-            pass
+            rid = input("RoomId: ")
+            password = input("Password: ")
+            msg = JoinRoom(g_uid, int(rid), password) 
+            g_sendQ.put(msg.pack())
         if data == "quit":
             print("[*] Exiting!")
             g_app_exiting = True
@@ -172,7 +175,7 @@ def main():
 
                     print(msg)
 
-                    g_room_list.append(msg.getRoomName())
+                    g_room_dict[msg.getId()] = msg
 
                 else:
                     print('unrecognized pkt type')
