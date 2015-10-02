@@ -41,6 +41,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
 {
     room_t *r = calloc(1, sizeof(room_t));
     r->name = calloc(m->roomNameLen + 1, sizeof(char));
+    uv_rwlock_init(&r->roomLock);
 
     strlcpy(r->name, m->roomNameAndPass, m->roomNameLen + 1);
 
@@ -56,7 +57,6 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
 
     player_t *creator = NULL;
     GETPBYID(m->playerId, creator);
-    uv_rwlock_init(&r->roomLock);
 
     uv_rwlock_wrlock(&creator->playerLock);
     r->players = g_slist_prepend(r->players, creator);

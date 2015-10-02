@@ -18,13 +18,13 @@ typedef enum _ROOM_STATE {
 } ROOM_STATE;
 
 typedef struct _room_t {
+    uv_rwlock_t roomLock; /* A more granular lock on a room */
     char *password; /* the password for the room */
     char *name; /* the name of the room */
     ROOM_STATE state; /* The state of the room */
     unsigned int id; /* the room id */
     GSList *players; /* Total joined players */
     uint8_t numPlayers; /* maximum number of players */
-    uv_rwlock_t roomLock; /* A more granular lock on a room */
 } room_t;
 
 room_t *createRoom(struct _msg_create_room *m, unsigned int id);
