@@ -58,7 +58,10 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     GETPBYID(m->playerId, creator);
     uv_rwlock_init(&r->roomLock);
 
+    uv_rwlock_wrlock(&creator->playerLock);
     r->players = g_slist_prepend(r->players, creator);
+    creator->state = JOINED_AND_WAITING;
+    uv_rwlock_wrunlock(&creator->playerLock);
 
     return r;
 }
