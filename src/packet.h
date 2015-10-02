@@ -62,6 +62,7 @@ typedef enum _ERROR_CODE {
    SUCCESS = 7, /* Just here for debugging the replies, will remove */
    BAD_PASSWORD = 8, /* The password was incorrect for the room */
    BAD_ROOM_NUM = 9, /* The room number is invalid */
+   BAD_NUM_PLAYERS = 10, /* Player count invalid for room */
    NUM_ERR_CODES
 } ERR_CODE;
 

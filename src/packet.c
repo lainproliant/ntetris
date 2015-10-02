@@ -299,6 +299,14 @@ name_collide:
 
             if (authPlayerPkt(pkt_player, &r->from, 
                     BROWSING_ROOMS, BROWSING_ROOMS)) {
+
+                /* Check for a valid number of players */
+                if (croom->numPlayers < MIN_PLAYERS || 
+                    croom->numPlayers > MAX_PLAYERS) {
+                    createErrPacket(errPkt, BAD_NUM_PLAYERS);
+                    reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
+                }
+
                 /* Check for a room name collision */
                 roomName = malloc(croom->roomNameLen + 1);
                 strlcpy(roomName, croom->roomNameAndPass, croom->roomNameLen+1);

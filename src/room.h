@@ -7,6 +7,9 @@
 #include <stdbool.h>
 #include <uv.h>
 
+#define MIN_PLAYERS 2
+#define MAX_PLAYERS 4
+
 struct _msg_create_room;
 struct _packet_t;
 struct _msg_create_room;
