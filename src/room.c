@@ -108,7 +108,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     }
 
     uv_rwlock_wrlock(&p->playerLock);
-    g_slist_prepend(r->players, p);
+    r->players = g_slist_prepend(r->players, p);
 
     if (g_slist_length(r->players) == r->numPlayers) {
         r->state = IN_PROGRESS;
