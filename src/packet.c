@@ -175,7 +175,10 @@ void handle_msg(uv_work_t *req)
     msg_list_rooms *m_lr = NULL;
     msg_join_room *m_jr = NULL;
     room_t *newRoom = NULL;
+    room_t *joinedRoom = NULL;
     uint32_t incomingId;
+    uint32_t incomingRId;
+    ERR_CODE roomJoinRes;
     char senderIP[17] = { 0 };
 
     /* Stack allocated buffer for the error message packet */
@@ -386,7 +389,25 @@ room_name_collide:
 
             if (authPlayerPkt(pkt_player, &r->from,
                     BROWSING_ROOMS, BROWSING_ROOMS)) {
-                PRINT(BOLDCYAN "PLAYER ATTEMPTING TO JOIN ROOM\n" RESET);
+                incomingRId = ntohl(m_jr->roomId);
+
+                GETRBYID(incomingRId, joinedRoom);
+
+                if (joinedRoom == NULL || 
+                    joinedRoom->state != WAITING_FOR_PLAYERS) {
+                    createErrPacket(errPkt, BAD_ROOM_NUM);
+                    reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
+                    return;
+                }
+
+                roomJoinRes = joinPlayer(m_jr, pkt_player, joinedRoom, &r->from);
+
+                if (roomJoinRes != NULL) {
+                    createErrPacket(errPkt, roomJoinRes);
+                    reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
+                }
+
+
             } else {
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
                 WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
