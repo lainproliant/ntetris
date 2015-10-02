@@ -61,6 +61,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     uv_rwlock_wrlock(&creator->playerLock);
     r->players = g_slist_prepend(r->players, creator);
     creator->state = JOINED_AND_WAITING;
+    creator->curJoinedRoomId = id;
     uv_rwlock_wrunlock(&creator->playerLock);
 
     return r;
@@ -85,6 +86,7 @@ void destroyRoom(room_t *r, const char *optionalMsg)
     free(r->name);
     free(r->password);
     uv_rwlock_wrunlock(&r->roomLock);
+    uv_rwlock_destroy(&r->roomLock);
 
     free(r); 
 }

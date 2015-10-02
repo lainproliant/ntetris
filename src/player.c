@@ -1,5 +1,6 @@
 #include "player.h"
 #include "packet.h"
+#include "room.h"
 #include "macros.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,8 +35,27 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
 
 void destroyPlayer(player_t *p)
 {
+    room_t *r = NULL;
+    uv_rwlock_wrlock(&p->playerLock);
     PRINT("Destroying player object[%p] (%s)\n", p, p->name);
+
+    if (p->state >= JOINED_AND_WAITING) {
+       GETRBYID(p->curJoinedRoomId, r); 
+
+        if (r != NULL) {
+            uv_rwlock_wrlock(&r->roomLock);
+            /* TODO: Add logic here for notifying players
+             * in the room that this player has left. This
+             * will be a status update with game over / forfeit
+             * with the player's identifier (msg_update_client_state) */
+             r->players = g_slist_remove(r->players, p);
+             uv_rwlock_wrunlock(&r->roomLock);
+        }
+    }
+
     free(p->name);
+    uv_rwlock_wrunlock(&p->playerLock);
+    uv_rwlock_destroy(&p->playerLock);
     free(p);
 }
 

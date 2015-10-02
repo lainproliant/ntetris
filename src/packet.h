@@ -196,13 +196,13 @@ typedef struct _msg_join_room {
 
 #pragma pack(1)
 typedef struct _msg_disconnect_client {
-    uint32_t playerId; /* The winning playerId */
+    uint32_t playerId;
 } msg_disconnect_client;
 #pragma pop
 
 #pragma pack(1)
 typedef struct _msg_game_over {
-    uint32_t winningPid;
+    uint32_t winningPid; /* The winning playerId */
 } msg_game_over;
 #pragma pop
 
