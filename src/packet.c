@@ -305,6 +305,7 @@ name_collide:
                     croom->numPlayers > MAX_PLAYERS) {
                     createErrPacket(errPkt, BAD_NUM_PLAYERS);
                     reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
+                    return;
                 }
 
                 /* Check for a room name collision */
