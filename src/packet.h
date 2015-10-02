@@ -106,13 +106,13 @@ typedef struct _msg_update_tetrad {
 #pragma pack(1)
 typedef struct _msg_room_success {
     uint32_t roomId;
-    uint32_t joinedIds[];
+    uint64_t joinedIdHashs[];
 } msg_room_success;
 #pragma pop
 
 #pragma pack(1)
 typedef struct _msg_opponent_announce {
-    uint32_t playerId;
+    uint64_t playerIdHash;
     uint8_t nameLength;
     char playerName[];
 } msg_opponent_announce;
