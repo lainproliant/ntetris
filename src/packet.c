@@ -343,7 +343,15 @@ room_name_collide:
 
         case PING:
             m_recPing = (msg_ping*)(pkt->data);
-            pulsePlayer(m_recPing, &r->from);
+            incomingId = ntohl(m_recPing->playerId);
+
+            GETPBYID(incomingId, pkt_player);
+
+            if (authPlayerPkt(pkt_player, &r->from,
+                BROWSING_ROOMS, NUM_STATES)) {
+                pulsePlayer(m_recPing, &r->from);
+            }
+
             break;
 
         case DISCONNECT_CLIENT:
@@ -385,6 +393,8 @@ room_name_collide:
                         " is invalid for given player state", 
                         incomingId, senderIP);
             }
+            return;
+            break;
 
         default:
             WARNING("Unhandled packet type!!!! (%d)", packetType);
