@@ -41,6 +41,15 @@ def sender(config):
     while not g_app_exiting:
         data = g_sendQ.get()
         sock.sendto(data, (hostname, int(port)))
+def pinger():
+    global g_app_exiting
+    global g_uid
+    global g_sendQ
+
+    if not g_app_exiting:
+        if g_uid != None:
+            g_sendQ.put(Ping(g_uid).pack())
+            threading.Timer(2, pinger).start()
 
 def commander():
     global g_app_exiting
@@ -58,12 +67,22 @@ def commander():
             for room in g_room_list:
                 print(room)
         if data == "create" and g_uid != None:
-            msg = CreateRoom(g_uid, 4, "Test room", "for fun")
+            name = input("Name: ")
+            numPlayers = input("Number of players: ")
+            password = input("Password: ")
+            if name and numPlayers:
+                msg = CreateRoom(g_uid, int(numPlayers), name, password)
             print(msg)
             g_sendQ.put(msg.pack())
         if data == "update" and g_uid != None:
             msg = ListRoom(g_uid)
             g_sendQ.put(msg.pack())
+        if data == "join" and g_uid != None:
+            pass
+        if data == "quit":
+            print("[*] Exiting!")
+            g_app_exiting = True
+            return
 
 
 def main():
@@ -128,7 +147,7 @@ def main():
                 
                 if g_uid == None:
                     g_uid = msg.getUid()
-                    g_sendQ.put(ListRoom(g_uid).pack())
+                    pinger()
 
             elif int(data[1]) == ROOM_ANNOUNCE:
                 msg = RoomAnnounce()

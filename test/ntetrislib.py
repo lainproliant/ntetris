@@ -13,7 +13,11 @@ JOIN_ROOM = 9
 USER_ACTION = 10
 ERROR = 11
 REG_ACK = 12
-NUM_MESSAGES = 13
+PING = 13
+GAME_OVER = 14 
+OPPONENT_ANNOUNCE = 15
+ROOM_SUCCESS = 16
+NUM_MESSAGES = 17
 
 
 class Message:
@@ -209,6 +213,15 @@ class RoomAnnounce(Message):
                                                "LOCKED" if self.passwordProtected else "OPEN")
     def getRoomName(self):
         return str(self.roomName)
+
+class Ping(Message):
+    type = PING
+    
+    def __init__(self, guid):
+        self.guid = guid
+
+    def pack(self):
+        return struct.pack("!BBI", self.version, self.type, self.guid)
 
 class UserAction(Message):
     type = USER_ACTION
