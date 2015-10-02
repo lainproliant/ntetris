@@ -385,6 +385,8 @@ room_name_collide:
                         " is invalid for given player state", 
                         incomingId, senderIP);
             }
+            return;
+            break;
 
         default:
             WARNING("Unhandled packet type!!!! (%d)", packetType);
