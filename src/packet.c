@@ -173,6 +173,7 @@ void handle_msg(uv_work_t *req)
     msg_ping *m_recPing = NULL;
     msg_disconnect_client *m_dc = NULL;
     msg_list_rooms *m_lr = NULL;
+    msg_join_room *m_jr = NULL;
     room_t *newRoom = NULL;
     uint32_t incomingId;
     char senderIP[17] = { 0 };
@@ -368,7 +369,23 @@ room_name_collide:
             }
              
             return;
-            break; 
+            break;
+        case JOIN_ROOM:
+            m_jr = (msg_join_room*)(pkt->data);
+            incomingId = ntohl(m_jr->playerId);
+            
+            GETPBYID(incomingId, pkt_player);
+
+            if (authPlayerPkt(pkt_player, &r->from,
+                    BROWSING_ROOMS, BROWSING_ROOMS)) {
+                PRINT(BOLDCYAN "PLAYER ATTEMPTING TO JOIN ROOM\n" RESET);
+            } else {
+                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
+                WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
+                        " is invalid for given player state", 
+                        incomingId, senderIP);
+            }
+
         default:
             WARNING("Unhandled packet type!!!! (%d)", packetType);
             createErrPacket(errPkt, UNSUPPORTED_MSG);
