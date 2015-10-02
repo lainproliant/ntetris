@@ -61,6 +61,7 @@ typedef enum _ERROR_CODE {
    BAD_ROOM_NAME = 6, /* The user room name is too long or stupid */
    SUCCESS = 7, /* Just here for debugging the replies, will remove */
    BAD_PASSWORD = 8, /* The password was incorrect for the room */
+   BAD_ROOM_NUM = 9, /* The room number is invalid */
    NUM_ERR_CODES
 } ERR_CODE;
 

@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <uv.h>
-#include "room.h"
 #include "rand.h"
 #include "player.h"
 #include "packet.h"
 #include "macros.h"
+#include "room.h"
 
 #ifdef __linux__
 #include <bsd/stdlib.h>
@@ -46,7 +46,8 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
 
     if (m->passLen > 0) {
         r->password = calloc(m->passLen, sizeof(char));
-        strlcpy(r->password, m->roomNameAndPass + m->roomNameLen, m->passLen + 1); 
+        strlcpy(r->password, m->roomNameAndPass + m->roomNameLen, 
+                m->passLen + 1); 
     }
 
     r->state = WAITING_FOR_PLAYERS;
@@ -55,8 +56,9 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
 
     player_t *creator = NULL;
     GETPBYID(m->playerId, creator);
+    uv_rwlock_init(&r->roomLock);
 
-    r->players = g_slist_append(r->players, creator);
+    r->players = g_slist_prepend(r->players, creator);
 
     return r;
 }
@@ -72,13 +74,52 @@ void kickPlayerFromRoom(gpointer p, gpointer msg)
 
 void destroyRoom(room_t *r, const char *optionalMsg)
 {
+    uv_rwlock_wrlock(&r->roomLock);
     g_slist_foreach(r->players, (GFunc)kickPlayerFromRoom, 
                     (gpointer)optionalMsg);
     g_slist_free(r->players);
 
     free(r->name);
     free(r->password);
+    uv_rwlock_wrunlock(&r->roomLock);
+
     free(r); 
+}
+
+int joinPlayer(msg_join_room *m, player_t *p, room_t *r, 
+                const struct sockaddr *from)
+{
+    /* This function returns an error code, otherwise returns 0 */
+    if (r->password != NULL) {
+        /* Server has a password, make sure player entered one */ 
+        if (m->passwordLen != strlen(r->password) || 
+            memcmp(m->password, r->password, m->passwordLen)) {
+           return BAD_PASSWORD;
+        }
+    }
+
+    uv_rwlock_wrlock(&r->roomLock);
+
+    if (r->state != WAITING_FOR_PLAYERS) {
+        return BAD_ROOM_NUM;
+    }
+
+    uv_rwlock_wrlock(&p->playerLock);
+    g_slist_prepend(r->players, p);
+
+    if (g_slist_length(r->players) == r->numPlayers) {
+        r->state = IN_PROGRESS;
+        p->state = PLAYING_GAME;
+        /* Logic goes here for sending packets to inform players of 
+         * state change */
+    } else {
+        p->state = JOINED_AND_WAITING;
+    }
+
+    uv_rwlock_wrunlock(&p->playerLock);
+    uv_rwlock_wrunlock(&r->roomLock);
+    
+    return NULL;
 }
 
 void gh_announceRoom(gpointer k, gpointer v, gpointer d)

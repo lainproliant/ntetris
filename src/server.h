@@ -13,7 +13,7 @@ typedef struct _server_t {
    GHashTable *roomsById; /* protected by roomsLock */
    GHashTable *roomsByName; /* protected by roomsLock */
    uv_rwlock_t *playerTableLock; /* player lists rw_lock */
-   uv_rwlock_t *roomsLock;
+   uv_rwlock_t *roomsLock; /* Protects the global list of rooms */
    uv_loop_t *mainLoop;
    int listenSock;
    uv_timer_t timer_req;
