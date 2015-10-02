@@ -110,11 +110,13 @@ void announceRooms(const struct sockaddr *from)
 
 bool validateRoomName(msg_create_room *m)
 {
+    size_t i;
+
     if (m->roomNameLen > MAX_NAMELEN || m->roomNameLen == 0) {
         return false;
     } 
 
-    for (size_t i = 0; i < m->roomNameLen; ++i) {
+    for (i = 0; i < m->roomNameLen; ++i) {
         if (!isprint(m->roomNameAndPass[i])) {
             return false;
         }

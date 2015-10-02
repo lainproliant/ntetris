@@ -6,6 +6,8 @@
 
 #include <strings.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifdef __sun
 #include "strtonum.h"
