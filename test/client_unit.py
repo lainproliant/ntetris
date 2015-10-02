@@ -7,6 +7,7 @@ import sys
 import random
 import time
 import threading
+from select import select
 
 g_msgQ = queue.Queue()
 g_sendQ = queue.Queue()
@@ -23,12 +24,18 @@ def listener(sock):
     print("[*] Starting recv thread")
 
     while not g_app_exiting:
-        data, addr = sock.recvfrom(1024)
-        ip,port = addr
-        print("[-] received msg from: %s" % str(ip))
-        g_msgQ.put(data)
+        rlist,wlist,xlist = select([sock],[],[],1)
+        if not rlist:
+            continue
+        for s in rlist:
+            data, addr = s.recvfrom(1024)
+            ip,port = addr
+            print("[-] received msg from: %s" % str(ip))
+            g_msgQ.put(data)
 
     sock.close()
+
+    print("[*] Leaving recv thread")
 
 def sender(config):
     global g_sendQ
@@ -39,8 +46,15 @@ def sender(config):
     print("[*] Starting send thread for server %s:%d" % (hostname, int(port)))
 
     while not g_app_exiting:
-        data = g_sendQ.get()
-        sock.sendto(data, (hostname, int(port)))
+        if not g_sendQ.empty():
+            data = g_sendQ.get()
+            sock.sendto(data, (hostname, int(port)))
+    if g_uid != None:
+        print("[*] Disconnecting")
+        sock.sendto(DisconnectClient(g_uid).pack(), (hostname, int(port)))
+
+    print("[*] Leaving send thread")
+
 def pinger():
     global g_app_exiting
     global g_uid
@@ -82,7 +96,9 @@ def commander():
         if data == "quit":
             print("[*] Exiting!")
             g_app_exiting = True
-            return
+        if data == "":
+            print("ls create update join quit")
+    print("[*] Leaving command processor")
 
 
 def main():
@@ -94,14 +110,14 @@ def main():
 
     argv = sys.argv
     
-    if len(argv) != 3:
-        print("Usage: ./test.py hostname port")
+    if len(argv) != 4:
+        print("Usage: ./test.py hostname port name")
         exit(0)
 
     # Pop the head and ignore
     argv = argv[1:]
 
-    hostname, port = argv[0], argv[1]
+    hostname, port, name = argv[0], argv[1], argv[2]
 
     sock = socket.socket(socket.AF_INET,
                          socket.SOCK_DGRAM)
@@ -119,54 +135,53 @@ def main():
 
     message = RegisterClient()
 
-    message.setName("I am a test client")   
+    message.setName(name)   
 
     g_sendQ.put(message.pack())
 
     try:
         while not g_app_exiting:
-            data = g_msgQ.get()
-            if int(data[1]) == ERROR:
-                msg = ErrorMsg()
-                msg.unpack(data)
-                print(msg) 
-            elif int(data[1]) == UPDATE_TETRAD:
-                msg = UpdateTetrad()
-                msg.unpack(data)
-                print(msg)
-            elif int(data[1]) == UPDATE_CLIENT_STATE:
-                msg = UpdateClientState()
-                msg.unpack(data)
-                print(msg)
-            elif int(data[1]) == REG_ACK:
-                msg = RegAck()
-                msg.unpack(data)
-                
-                print(msg)
-                g_sendQ.put(msg.pack())
-                
-                if g_uid == None:
-                    g_uid = msg.getUid()
-                    pinger()
+            if not g_msgQ.empty():
+                data = g_msgQ.get()
+                if int(data[1]) == ERROR:
+                    msg = ErrorMsg()
+                    msg.unpack(data)
+                    print(msg) 
+                elif int(data[1]) == UPDATE_TETRAD:
+                    msg = UpdateTetrad()
+                    msg.unpack(data)
+                    print(msg)
+                elif int(data[1]) == UPDATE_CLIENT_STATE:
+                    msg = UpdateClientState()
+                    msg.unpack(data)
+                    print(msg)
+                elif int(data[1]) == REG_ACK:
+                    msg = RegAck()
+                    msg.unpack(data)
+                    
+                    print(msg)
+                    g_sendQ.put(msg.pack())
+                    
+                    if g_uid == None:
+                        g_uid = msg.getUid()
+                        pinger()
 
-            elif int(data[1]) == ROOM_ANNOUNCE:
-                msg = RoomAnnounce()
-                msg.unpack(data)
+                elif int(data[1]) == ROOM_ANNOUNCE:
+                    msg = RoomAnnounce()
+                    msg.unpack(data)
 
-                print(msg)
+                    print(msg)
 
-                g_room_list.append(msg.getRoomName())
+                    g_room_list.append(msg.getRoomName())
 
-            else:
-                print('unrecognized pkt type')
-                print('len(data) = %lu' % (len(data),))
-                print(data)
+                else:
+                    print('unrecognized pkt type')
+                    print('len(data) = %lu' % (len(data),))
+                    print(data)
+        print("[*] Leaving main thread")
 
     except KeyboardInterrupt:
           g_app_exiting = True
-
-    if g_uid != None:
-        g_sendQ.put(DisconnectClient(g_uid).pack())
 
 if __name__=="__main__":
     main()
