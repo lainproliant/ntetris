@@ -106,7 +106,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     uv_rwlock_wrlock(&r->roomLock);
 
     if (r->state != WAITING_FOR_PLAYERS) {
-        return BAD_ROOM_NUM;
+        return ROOM_FULL;
     }
 
     uv_rwlock_wrlock(&p->playerLock);

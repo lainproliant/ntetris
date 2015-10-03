@@ -63,6 +63,7 @@ typedef enum _ERROR_CODE {
    BAD_PASSWORD = 8, /* The password was incorrect for the room */
    BAD_ROOM_NUM = 9, /* The room number is invalid */
    BAD_NUM_PLAYERS = 10, /* Player count invalid for room */
+   ROOM_FULL = 11, /* The room is now full, you waited too long */
    NUM_ERR_CODES
 } ERR_CODE;
 

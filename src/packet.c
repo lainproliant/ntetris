@@ -402,8 +402,7 @@ room_name_collide:
 
                 GETRBYID(incomingRId, joinedRoom);
 
-                if (joinedRoom == NULL || 
-                    joinedRoom->state != WAITING_FOR_PLAYERS) {
+                if (joinedRoom == NULL) {
                     createErrPacket(errPkt, BAD_ROOM_NUM);
                     reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                     return;
@@ -415,7 +414,6 @@ room_name_collide:
                     createErrPacket(errPkt, roomJoinRes);
                     reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                 }
-
 
             } else {
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
