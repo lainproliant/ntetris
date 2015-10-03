@@ -28,7 +28,7 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
     p->curJoinedRoomId = 0;
     p->playerAddr = sock;
 
-    uv_rwlock_init(&(p->playerLock));
+    uv_rwlock_init(&p->playerLock);
 
     return p;
 }

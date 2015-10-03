@@ -55,6 +55,11 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     r->numPlayers = m->numPlayers;
     r->id = id;
 
+    /* Generate the random public ids, these will likely
+     * be unique, as they are generated from the random
+     * device file */
+    r->publicIds =  (uint32_t*)getRandBytes(sizeof(uint32_t) * r->numPlayers);
+
     player_t *creator = NULL;
     GETPBYID(m->playerId, creator);
 
@@ -85,16 +90,38 @@ void destroyRoom(room_t *r, const char *optionalMsg)
 
     free(r->name);
     free(r->password);
+    free(r->publicIds);
     uv_rwlock_wrunlock(&r->roomLock);
     uv_rwlock_destroy(&r->roomLock);
 
     free(r); 
 }
 
+void gl_startingState(gpointer v, gpointer d)
+{
+    /* We've already mutated this player's state and trying
+     * to obtain the lock will deadlock things */
+    if (d == v) {
+        return;
+    }
+
+    player_t *curPlayer = (player_t*)v;
+    /* By obtaining lock, player cannot be removed,
+     * so mutability shouldn't cause use after free */
+    uv_rwlock_wrlock(&curPlayer->playerLock);
+    curPlayer->state = PLAYING_GAME;
+    uv_rwlock_wrunlock(&curPlayer->playerLock);
+}
+
 int joinPlayer(msg_join_room *m, player_t *p, room_t *r, 
                 const struct sockaddr *from)
 {
     /* This function returns an error code, otherwise returns 0 */
+
+    player_t *pCursor = NULL;
+    GSList *lCursor = NULL;
+    int playerNum;
+
     if (r->password != NULL) {
         /* Server has a password, make sure player entered one */ 
         if (m->passwordLen != strlen(r->password) || 
@@ -116,6 +143,17 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     if (g_slist_length(r->players) == r->numPlayers) {
         r->state = IN_PROGRESS;
         p->state = PLAYING_GAME;
+        p->publicId = r->publicIds[0];
+        lCursor = r->players->next;
+
+        g_slist_foreach(r->players, (GFunc)gl_startingState, p);
+        for (playerNum = 1; playerNum < r->numPlayers; ++playerNum) {
+            /* revisit this, this might cause use after free or deadlocks */
+            pCursor = lCursor->data;
+            uv_rwlock_wrlock(&pCursor->playerLock);
+            pCursor->publicId = r->publicIds[playerNum];
+            uv_rwlock_wrunlock(&pCursor->playerLock);
+        }
         /* Logic goes here for sending packets to inform players of 
          * state change */
     } else {

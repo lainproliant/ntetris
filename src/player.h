@@ -38,6 +38,7 @@ typedef struct _player_t {
     struct sockaddr playerAddr; /* Their IP + port combo */
     PLAYER_STATE state; /* We could ++ to advance to next state */
     char *name; /* The player's name */
+    uint32_t publicId; /* Used by other players in the same room */
     uv_rwlock_t playerLock; /* a more granular lock for the player */
 } player_t;
 

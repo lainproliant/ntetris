@@ -27,6 +27,7 @@ typedef struct _room_t {
     ROOM_STATE state; /* The state of the room */
     unsigned int id; /* the room id */
     GSList *players; /* Total joined players */
+    uint32_t *publicIds; /* a list of player public ids per player */
     uint8_t numPlayers; /* maximum number of players */
 } room_t;
 
