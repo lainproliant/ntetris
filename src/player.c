@@ -33,6 +33,15 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
     return p;
 }
 
+void removePlayerFromRoom(player_t *p)
+{
+    uv_rwlock_wrlock(&p->playerLock);
+    p->curJoinedRoomId = 0;
+    p->state = BROWSING_ROOMS;
+    p->publicId = 0;
+    uv_rwlock_wrunlock(&p->playerLock);
+}
+
 void destroyPlayer(player_t *p)
 {
     room_t *r = NULL;
@@ -43,13 +52,20 @@ void destroyPlayer(player_t *p)
        GETRBYID(p->curJoinedRoomId, r); 
 
         if (r != NULL) {
-            uv_rwlock_wrlock(&r->roomLock);
-            /* TODO: Add logic here for notifying players
-             * in the room that this player has left. This
-             * will be a status update with game over / forfeit
-             * with the player's identifier (msg_update_client_state) */
-             r->players = g_slist_remove(r->players, p);
-             uv_rwlock_wrunlock(&r->roomLock);
+            /* If they are the final player */
+            if (g_slist_length(r->players) == 1) {
+                uv_rwlock_wrunlock(&p->playerLock);
+                destroyRoom(r, "Final player quit");
+                uv_rwlock_wrlock(&p->playerLock);
+            } else {
+                uv_rwlock_wrlock(&r->roomLock);
+                /* TODO: Add logic here for notifying players
+                 * in the room that this player has left. This
+                 * will be a status update with game over / forfeit
+                 * with the player's identifier (msg_update_client_state) */
+                r->players = g_slist_remove(r->players, p);
+                uv_rwlock_wrunlock(&r->roomLock);
+            }
         }
     }
 

@@ -78,11 +78,17 @@ void kickPlayerFromRoom(gpointer p, gpointer msg)
     const char *kmsg = (const char*)msg;
     sendKickPacket(p, kmsg, g_server->listenSock);
 
-    destroyPlayer(p);
+    removePlayerFromRoom(p);
 }
 
 void destroyRoom(room_t *r, const char *optionalMsg)
 {
+    /* Remove the listing, first */
+    uv_rwlock_wrlock(g_server->roomsLock);
+    g_hash_table_remove(g_server->roomsById, GUINT_TO_POINTER(r->id));
+    g_hash_table_remove(g_server->roomsByName, r->name);
+    uv_rwlock_wrunlock(g_server->roomsLock);
+
     uv_rwlock_wrlock(&r->roomLock);
     g_slist_foreach(r->players, (GFunc)kickPlayerFromRoom, 
                     (gpointer)optionalMsg);

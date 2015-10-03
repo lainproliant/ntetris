@@ -55,5 +55,6 @@ void printPlayers();
 bool authPlayerPkt(player_t *p, const struct sockaddr *from, 
                    PLAYER_STATE min, PLAYER_STATE max);
 bool validateName(struct _msg_register_client *m);
+void removePlayerFromRoom(player_t *p);
 
 #endif
