@@ -53,7 +53,7 @@ uint8_t *getRandBytes(size_t numBytes)
 {
     /* Minimizes things to just a single syscall */
     uint8_t *retVal = (uint8_t*)malloc(numBytes);
-    size_t nRead = fread(&retVal, numBytes, 1, randFile);
+    size_t nRead = fread(retVal, numBytes, 1, randFile);
 
     if (nRead == 0) {
         if (ferror(randFile)) {
