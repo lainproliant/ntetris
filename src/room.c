@@ -152,6 +152,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
             pCursor = lCursor->data;
             uv_rwlock_wrlock(&pCursor->playerLock);
             pCursor->publicId = r->publicIds[playerNum];
+            lCursor = lCursor->next;
             uv_rwlock_wrunlock(&pCursor->playerLock);
         }
         /* Logic goes here for sending packets to inform players of 
