@@ -222,7 +222,7 @@ void printRoom(gpointer k, gpointer v, gpointer d)
     room_t *r = (room_t*)v;
     size_t numPlayers = g_slist_length(r->players);
      
-    PRINT("%-30s %-17u %10u / %d %-8d\n", r->name, r->id, 
+    PRINT("%-30s %-17u %10lu / %d %-8d\n", r->name, r->id, 
             numPlayers, r->numPlayers, r->state);
 }
 
