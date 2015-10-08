@@ -10,6 +10,11 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#if defined(__linux__)
+#include <bsd/stdlib.h>
+#include <bsd/string.h>
+#endif
+
 void createErrPacket(packet_t *ret, ERR_CODE e)
 {
     ret->type = (uint8_t)ERR_PACKET;
@@ -410,7 +415,7 @@ room_name_collide:
 
                 roomJoinRes = joinPlayer(m_jr, pkt_player, joinedRoom, &r->from);
 
-                if (roomJoinRes != NULL) {
+                if (roomJoinRes != 0) {
                     createErrPacket(errPkt, roomJoinRes);
                     reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                 }
