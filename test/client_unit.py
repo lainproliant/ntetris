@@ -33,8 +33,6 @@ def listener(sock):
             print("[-] received msg from: %s" % str(ip))
             g_msgQ.put(data)
 
-    sock.close()
-
     print("[*] Leaving recv thread")
 
 def sender(config):
@@ -49,9 +47,11 @@ def sender(config):
         if not g_sendQ.empty():
             data = g_sendQ.get()
             sock.sendto(data, (hostname, int(port)))
+        time.sleep(0.5)
     if g_uid != None:
         print("[*] Disconnecting")
         sock.sendto(DisconnectClient(g_uid).pack(), (hostname, int(port)))
+        sock.close()
 
     print("[*] Leaving send thread")
 
@@ -76,6 +76,11 @@ def commander():
         data = input("")
         data = data.strip()
         
+        if data == "panda":
+            while not g_app_exiting:
+                if g_uid != None:
+                    g_sendQ.put(DisconnectClient(g_uid).pack())
+                    g_uid = None
         if data == "ls":
             print("Rooms:")
             for room in g_room_dict:
@@ -176,11 +181,19 @@ def main():
                     print(msg)
 
                     g_room_dict[msg.getId()] = msg
+                elif int(data[1]) == KICK_CLIENT:
+                    msg = KickClient()
+                    msg.unpack(data)
+                    
+                    print(msg)
+                    g_uid = None
+                    g_sendQ.put(message.pack())
 
                 else:
-                    print('unrecognized pkt type')
+                    print('unrecognized pkt type=%d' % int(data[1]))
                     print('len(data) = %lu' % (len(data),))
                     print(data)
+            time.sleep(0.1)
         print("[*] Leaving main thread")
 
     except KeyboardInterrupt:

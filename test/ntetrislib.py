@@ -133,6 +133,12 @@ class DisconnectClient(Message):
 class KickClient(Message):
     type = KICK_CLIENT
 
+    def unpack(self, msg):
+        (version,type,self.kickStatus,reasonLength) = struct.unpack_from('!BBBH',msg)
+        self.reason = struct.unpack_from('!%ds' % reasonLength, msg, offset=5)  
+    def __str__(self):
+        return "Kicked because %s" % str(self.reason)
+
 class ListRoom(Message):
     type = LIST_ROOMS
 
