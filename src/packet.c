@@ -143,6 +143,7 @@ void sendKickPacket(player_t *p, const char *reason, int sock)
     if (reason != NULL) {
         m = malloc(sizeof(packet_t) + sizeof(msg_kick_client) + 
                     strlen(reason));
+        m->type = KICK_CLIENT;
         mcast = (msg_kick_client*)m->data;
         mcast->reasonLength = htons(strlen(reason));
         memcpy(mcast->reason, reason, strlen(reason));
