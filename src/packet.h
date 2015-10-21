@@ -209,9 +209,9 @@ typedef struct _msg_game_over {
 
 /* This is a libuv payload for onrecv callbacks */
 typedef struct _request {
+    struct sockaddr from;
     ssize_t len;
     void *payload;
-    struct sockaddr from;
 } request;
 
 
