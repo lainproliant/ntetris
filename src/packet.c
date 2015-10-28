@@ -126,6 +126,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
             totalBytes += sizeof(msg_room_announce) + \
                 ntohs(aroom->roomNameLen) * sizeof(char);
             break;
+        
         default:
             WARNING("unhandled type passed in (%d)", t);
             return false;

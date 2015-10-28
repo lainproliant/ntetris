@@ -34,7 +34,6 @@ typedef enum _MSG_TYPE {
     PING, /* Client pings back to the server to prevent auto timeout */
     GAME_OVER, /* Game for the room has ended, notifies client of result */
     OPPONENT_ANNOUNCE, /* Opponent info from a given room */
-    ROOM_SUCCESS, /* Room created / joined sucessfully */
     NUM_MESSAGES
 } MSG_TYPE;
 
@@ -64,6 +63,7 @@ typedef enum _ERROR_CODE {
    BAD_ROOM_NUM = 9, /* The room number is invalid */
    BAD_NUM_PLAYERS = 10, /* Player count invalid for room */
    ROOM_FULL = 11, /* The room is now full, you waited too long */
+   ROOM_SUCCESS = 12, /* Room created / joined sucessfully */
    NUM_ERR_CODES
 } ERR_CODE;
 
@@ -106,15 +106,8 @@ typedef struct _msg_update_tetrad {
 #pragma pop
 
 #pragma pack(1)
-typedef struct _msg_room_success {
-    uint32_t roomId;
-    uint64_t joinedIdHashs[];
-} msg_room_success;
-#pragma pop
-
-#pragma pack(1)
 typedef struct _msg_opponent_announce {
-    uint64_t playerIdHash;
+    uint32_t playerPubId;
     uint8_t nameLength;
     char playerName[];
 } msg_opponent_announce;
@@ -205,6 +198,14 @@ typedef struct _msg_disconnect_client {
 typedef struct _msg_game_over {
     uint32_t winningPid; /* The winning playerId */
 } msg_game_over;
+#pragma pop
+
+#pragma pack(1)
+typedef struct _msg_chat_msg {
+    uint32_t playerId;
+    uint16_t msgLength;
+    char msg[];
+} msg_chat_msg;
 #pragma pop
 
 /* This is a libuv payload for onrecv callbacks */
