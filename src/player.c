@@ -281,7 +281,7 @@ void gl_announcePlayer(gpointer v, gpointer d)
 
     /* May move this to a function */
     msgSize = sizeof(packet_t) + sizeof(msg_opponent_announce) +
-                sizeof(uint8_t) + strlen(p->name);
+              strlen(p->name);
     moa = malloc(msgSize);
 
     moa->type = OPPONENT_ANNOUNCE;
