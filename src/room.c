@@ -61,7 +61,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     r->publicIds =  (uint32_t*)getRandBytes(sizeof(uint32_t) * r->numPlayers);
 
     player_t *creator = NULL;
-    GETPBYID(m->playerId, creator);
+    GETPBYID(ntohl(m->playerId), creator);
 
     uv_rwlock_wrlock(&creator->playerLock);
     r->players = g_slist_prepend(r->players, creator);
@@ -139,6 +139,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     uv_rwlock_wrlock(&r->roomLock);
 
     if (r->state != WAITING_FOR_PLAYERS) {
+        uv_rwlock_wrunlock(&r->roomLock);
         return ROOM_FULL;
     }
 

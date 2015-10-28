@@ -14,7 +14,8 @@ g_sendQ = queue.Queue()
 
 g_app_exiting = False
 g_room_dict = {}
-
+g_cur_room = None
+g_user_dict = {}
 g_uid = None
 
 def listener(sock):
@@ -33,8 +34,6 @@ def listener(sock):
             print("[-] received msg from: %s" % str(ip))
             g_msgQ.put(data)
 
-    sock.close()
-
     print("[*] Leaving recv thread")
 
 def sender(config):
@@ -49,9 +48,11 @@ def sender(config):
         if not g_sendQ.empty():
             data = g_sendQ.get()
             sock.sendto(data, (hostname, int(port)))
+        time.sleep(0.5)
     if g_uid != None:
         print("[*] Disconnecting")
         sock.sendto(DisconnectClient(g_uid).pack(), (hostname, int(port)))
+        sock.close()
 
     print("[*] Leaving send thread")
 
@@ -69,13 +70,18 @@ def commander():
     global g_app_exiting
     global g_uid
     global g_sendQ
-
+    global g_cur_room
     print("[*] Starting command processor")
 
     while not g_app_exiting:
         data = input("")
         data = data.strip()
         
+        if data == "panda":
+            while not g_app_exiting:
+                if g_uid != None:
+                    g_sendQ.put(DisconnectClient(g_uid).pack())
+                    g_uid = None
         if data == "ls":
             print("Rooms:")
             for room in g_room_dict:
@@ -96,6 +102,7 @@ def commander():
             password = input("Password: ")
             msg = JoinRoom(g_uid, int(rid), password) 
             g_sendQ.put(msg.pack())
+            g_cur_room = int(rid)
         if data == "quit":
             print("[*] Exiting!")
             g_app_exiting = True
@@ -110,6 +117,7 @@ def main():
     global g_app_exiting
     global g_uid
     global g_room_list
+    global g_user_dict
 
     argv = sys.argv
     
@@ -176,11 +184,27 @@ def main():
                     print(msg)
 
                     g_room_dict[msg.getId()] = msg
+                elif int(data[1]) == KICK_CLIENT:
+                    msg = KickClient()
+                    msg.unpack(data)
+                    
+                    print(msg)
+                    g_uid = None
+                    g_sendQ.put(message.pack())
+                elif int(data[1) == OPPONENT_ANNOUNCE:
+                    msg = OpponentAnnounce()
+                    msg.unpack(data)
+                    
+                    print(msg)
+                    
+                    g_user_dict[msg.getName()] = msg
+
 
                 else:
-                    print('unrecognized pkt type')
+                    print('unrecognized pkt type=%d' % int(data[1]))
                     print('len(data) = %lu' % (len(data),))
                     print(data)
+            time.sleep(0.1)
         print("[*] Leaving main thread")
 
     except KeyboardInterrupt:
