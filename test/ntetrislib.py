@@ -28,8 +28,8 @@ class OpponentAnnounce(Message):
     type = OPPONENT_ANNOUNCE
 
     def unpack(self, msg):
-        (version,type,self.pid, length) = struct.unpack("!BBIB", msg)
-        self.name = struct.unpack_from('!%ds' % length, msg, offset=11)[0]
+        (version,type,self.pid, length) = struct.unpack_from("!BBIB", msg)
+        self.name = struct.unpack_from('!%ds' % length, msg, offset=7)[0]
     def getName(self):
         return self.name
     def __str__(self):
@@ -251,7 +251,10 @@ class UserAction(Message):
 
 class ErrorMsg(Message):
     type = ERROR
-    
+   
+    msg_dict = {}
+    msg_dict[12] = "ROOM_SUCCESS"
+
     def unpack(self, msg):
         (version, type, val) = struct.unpack("!BBB", msg)
 
@@ -260,5 +263,5 @@ class ErrorMsg(Message):
         self.val = val
 
     def __str__(self):
-        return "ERROR: val=%d" % (int(self.val))
+        return "%s: val=%d" % (self.msg_dict.get(int(self.val),"ERROR"), int(self.val))
 
