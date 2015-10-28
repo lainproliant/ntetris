@@ -126,6 +126,8 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
 
     player_t *pCursor = NULL;
     GSList *lCursor = NULL;
+    uint8_t errPktBuf[ERRMSG_SIZE];
+    packet_t *joinSuccess = (packet_t*)errPktBuf;
     int playerNum;
 
     if (r->password != NULL) {
@@ -146,6 +148,13 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     uv_rwlock_wrlock(&p->playerLock);
     r->players = g_slist_prepend(r->players, p);
     p->curJoinedRoomId = r->id;
+
+    /* Because both the player & rooms are write locked, we can
+     * with impunity announce the new player and let the new
+     * player know they joined successfully */
+    createErrPacket(joinSuccess, ROOM_SUCCESS);
+    reply(joinSuccess, ERRMSG_SIZE, &p->playerAddr, g_server->listenSock);
+    announcePlayer(p, r);
 
     if (g_slist_length(r->players) == r->numPlayers) {
         r->state = IN_PROGRESS;

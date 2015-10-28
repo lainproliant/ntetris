@@ -14,6 +14,7 @@
 struct _msg_ping;
 struct _msg_reg_ack;
 struct _msg_register_client;
+struct _room_t;
 struct _request;
 
 extern server_t *g_server;
@@ -42,19 +43,48 @@ typedef struct _player_t {
     uv_rwlock_t playerLock; /* a more granular lock for the player */
 } player_t;
 
+/* Instantiate the player object */
 player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id);
+
+/* free the player */
 void destroyPlayer(player_t *p);
+
+/* Create a unique playerId */
 uint32_t genPlayerId(GHashTable *playersById);
+
+/* Player has sent a ping, reset their timeout counter */
 void pulsePlayer(struct _msg_ping *m, const struct sockaddr *from);
+
+/* Register the player */
 void regPlayer(struct _msg_reg_ack *m, const struct sockaddr *from);
+
+/* Kick the player by their name */
 void kickPlayerByName(const char *name);
+
+/* Kick the player by their given id, with optional reason */
 void kickPlayerById(unsigned int id, const char *reason);
+
+/* disconnect and kick the player */
 void disconnectPlayer(uint32_t id, struct _request *r);
+
+/* Work function for a foreach ghashtable */
 void printPlayer(gpointer k, gpointer v, gpointer d);
+
+/* Administrative function for listing players */
 void printPlayers();
+
+/* Makes sure the player is in the correct state in the game state
+ * machine and that they are in fact who they say they are */
 bool authPlayerPkt(player_t *p, const struct sockaddr *from, 
                    PLAYER_STATE min, PLAYER_STATE max);
+
+/* Validates the name is printable and a valid length */
 bool validateName(struct _msg_register_client *m);
+
+/* Removes the player from the room */
 void removePlayerFromRoom(player_t *p);
+
+/* Announces a successfully joined player p to room r */
+void announcePlayer(player_t *p, struct _room_t *r);
 
 #endif
