@@ -14,7 +14,8 @@ g_sendQ = queue.Queue()
 
 g_app_exiting = False
 g_room_dict = {}
-
+g_cur_room = None
+g_user_dict = {}
 g_uid = None
 
 def listener(sock):
@@ -69,7 +70,7 @@ def commander():
     global g_app_exiting
     global g_uid
     global g_sendQ
-
+    global g_cur_room
     print("[*] Starting command processor")
 
     while not g_app_exiting:
@@ -101,6 +102,7 @@ def commander():
             password = input("Password: ")
             msg = JoinRoom(g_uid, int(rid), password) 
             g_sendQ.put(msg.pack())
+            g_cur_room = int(rid)
         if data == "quit":
             print("[*] Exiting!")
             g_app_exiting = True
@@ -115,6 +117,7 @@ def main():
     global g_app_exiting
     global g_uid
     global g_room_list
+    global g_user_dict
 
     argv = sys.argv
     
@@ -188,6 +191,14 @@ def main():
                     print(msg)
                     g_uid = None
                     g_sendQ.put(message.pack())
+                elif int(data[1) == OPPONENT_ANNOUNCE:
+                    msg = OpponentAnnounce()
+                    msg.unpack(data)
+                    
+                    print(msg)
+                    
+                    g_user_dict[msg.getName()] = msg
+
 
                 else:
                     print('unrecognized pkt type=%d' % int(data[1]))

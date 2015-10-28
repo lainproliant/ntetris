@@ -25,6 +25,17 @@ class Message:
     length = 0
     version = 0
 
+class OpponentAnnounce(Message):
+    type = OPPONENT_ANNOUNCE
+
+    def unpack(self, msg):
+        (version,type,self.pid, length) = struct.unpack("!BBQB", msg)
+        self.name = struct.unpack_from('!%ds' % length, msg, offset=11)[0]
+    def getName(self):
+        return self.name
+    def __str__(self):
+        return "OPPONENT: %s" % self.name
+
 
 class RegisterTetrad(Message):
     type = REGISTER_TETRAD
