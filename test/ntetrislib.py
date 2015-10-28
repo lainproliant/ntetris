@@ -29,7 +29,7 @@ class OpponentAnnounce(Message):
     type = OPPONENT_ANNOUNCE
 
     def unpack(self, msg):
-        (version,type,self.pid, length) = struct.unpack("!BBQB", msg)
+        (version,type,self.pid, length) = struct.unpack("!BBIB", msg)
         self.name = struct.unpack_from('!%ds' % length, msg, offset=11)[0]
     def getName(self):
         return self.name
