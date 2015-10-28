@@ -191,7 +191,7 @@ def main():
                     print(msg)
                     g_uid = None
                     g_sendQ.put(message.pack())
-                elif int(data[1) == OPPONENT_ANNOUNCE:
+                elif int(data[1]) == OPPONENT_ANNOUNCE:
                     msg = OpponentAnnounce()
                     msg.unpack(data)
                     
