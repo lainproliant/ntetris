@@ -292,7 +292,14 @@ void gl_announcePlayer(gpointer v, gpointer d)
     pmrt->msgSize = msgSize;
 
     /* We reached end of list, couldn't find player, assume something wrong */
-    if (playerCursor == NULL) goto error;
+    if (playerCursor == NULL) {
+
+        if (p != pmrt->p) {
+            uv_rwlock_rdunlock(&p->playerLock);
+        }
+
+        goto error;
+    }
 
     pubId = pmrt->r->publicIds[playerSlot];
     /* Inform every player of every player */
