@@ -103,11 +103,16 @@ def commander():
             msg = JoinRoom(g_uid, int(rid), password) 
             g_sendQ.put(msg.pack())
             g_cur_room = int(rid)
+        if data == "say" and g_uid != None:
+            message = input("Say: ")
+            msg = OpponentMessage(g_uid, message)
+            g_sendQ.put(msg.pack())
+            print("Me: " + message)
         if data == "quit":
             print("[*] Exiting!")
             g_app_exiting = True
         if data == "":
-            print("ls create update join quit")
+            print("ls create update join say quit")
     print("[*] Leaving command processor")
 
 
@@ -197,7 +202,13 @@ def main():
                     
                     print(msg)
                     
-                    g_user_dict[msg.getName()] = msg
+                    g_user_dict[msg.getPid()] = msg
+                elif int(data[1]) == CHAT_MSG:
+                    msg = OpponentMessage()
+                    msg.unpack(data)
+
+                    if msg.getPid() in g_user_dict.keys():
+                        print(str(g_user_dict[msg.getPid()].getName()) + ": " + str(msg.getMessage()))
 
 
                 else:

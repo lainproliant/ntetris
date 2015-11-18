@@ -16,6 +16,7 @@ REG_ACK = 12
 PING = 13
 GAME_OVER = 14 
 OPPONENT_ANNOUNCE = 15
+CHAT_MSG = 16
 NUM_MESSAGES = 17
 
 
@@ -23,6 +24,23 @@ class Message:
     type = None
     length = 0
     version = 0
+
+class OpponentMessage(Message):
+    type = CHAT_MSG
+
+    def __init__(self, pid=0, message=""):
+        self.pid = pid
+        self.message = message
+    def unpack(self, msg):
+        (version,type,self.pid, length) = struct.unpack_from("!BBIH", msg)
+        self.message = struct.unpack_from("!%ds" % length, msg, offset=8)[0]
+    def getPid(self):
+        return self.pid
+    def getMessage(self):
+        return self.message
+    def pack(self):
+        return struct.pack("!BBIH%ds" % len(self.message), self.version, self.type, self.pid, len(self.message), bytes(self.message, 'utf-8'))
+
 
 class OpponentAnnounce(Message):
     type = OPPONENT_ANNOUNCE
@@ -32,6 +50,8 @@ class OpponentAnnounce(Message):
         self.name = struct.unpack_from('!%ds' % length, msg, offset=8)[0]
     def getName(self):
         return self.name
+    def getPid(self):
+        return self.pid
     def __str__(self):
         if self.status == 0:
             direction = "JOIN "
