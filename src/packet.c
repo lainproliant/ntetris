@@ -45,6 +45,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
     msg_kick_client *kclient = NULL;
     msg_join_room *jroom = NULL;
     msg_room_announce *aroom = NULL;
+    msg_chat_msg *chat = NULL;
     ssize_t totalBytes = sizeof(packet_t);
 
     switch(t) {
@@ -78,7 +79,16 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             upClient = (msg_update_client_state*)p->data;
             totalBytes += sizeof(msg_update_client_state) + \
-                upClient->nLinesChanged * sizeof(uint16_t); 
+                upClient->nLinesChanged * sizeof(uint16_t);
+            break;
+        case CHAT:
+            if (len < sizeof(msg_chat_msg) + totalBytes) {
+                return false;
+            }
+
+            chat = (msg_chat_msg*)p->data;
+            totalBytes += sizeof(msg_chat_msg) + \
+                 ntohs(chat->msgLength) * sizeof(char);
             break;
         case CREATE_ROOM:
             if (len < sizeof(msg_create_room) + totalBytes) {
@@ -186,6 +196,7 @@ void handle_msg(uv_work_t *req)
     msg_join_room *m_jr = NULL;
     room_t *newRoom = NULL;
     room_t *joinedRoom = NULL;
+    msg_chat_msg *m_chat = NULL;
     uint32_t incomingId;
     uint32_t incomingRId;
     ERR_CODE roomJoinRes;
@@ -425,6 +436,27 @@ room_name_collide:
                     reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
                 }
 
+            } else {
+                uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
+                WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
+                        " is invalid for given player state", 
+                        incomingId, senderIP);
+            }
+            return;
+            break;
+
+        case CHAT:
+            m_chat = (msg_chat_msg*)(pkt->data); 
+            incomingId = ntohl(m_chat->playerId);
+
+            GETPBYID(incomingId, pkt_player);
+
+            if (authPlayerPkt(pkt_player, &r->from,
+                   JOINED_AND_WAITING, NUM_STATES)) {
+                incomingRId = pkt_player->curJoinedRoomId; 
+                GETRBYID(incomingRId, joinedRoom);
+                sendChatMsg(pkt_player, joinedRoom, 
+                            m_chat->msg, (size_t)ntohs(m_chat->msgLength));
             } else {
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
                 WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
