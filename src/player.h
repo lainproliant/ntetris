@@ -17,6 +17,12 @@ struct _msg_register_client;
 struct _room_t;
 struct _request;
 
+typedef enum _JOIN_STATUS {
+    PLAYER_JOINED = 0,
+    PLAYER_LEFT = 1,
+    NUM_STATUSES
+} JOIN_STATUS;
+
 extern server_t *g_server;
 
 /* These represent all the various possible states the player
@@ -85,6 +91,9 @@ bool validateName(struct _msg_register_client *m);
 void removePlayerFromRoom(player_t *p);
 
 /* Announces a successfully joined player p to room r */
-void announcePlayer(player_t *p, struct _room_t *r);
+void announcePlayer(player_t *p, struct _room_t *r, JOIN_STATUS js);
+
+/* Announces successfully joined players to p for to room r */
+void announceJoinedPlayers(player_t *p, struct _room_t *r);
 
 #endif

@@ -13,6 +13,46 @@
 #include <bsd/string.h>
 #endif
 
+void removePlayer(room_t *r, player_t *p)
+{
+    int i;
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        if (r->players[i] == p) {
+            r->players[i] = NULL;
+            return;
+        }
+    }
+}
+
+void addPlayer(room_t *r, player_t *p)
+{
+    /* Find the first NULL slot in the
+     * player list */ 
+    int nullSlot = 0; 
+    int i;
+    for (i = 0; i< MAX_PLAYERS; ++i) {
+        if (r->players[i] == NULL) {
+            r->players[i] = p;
+            p->publicId = r->publicIds[i];
+            return;
+        }
+    }
+}
+
+int getNumJoinedPlayers(room_t *r)
+{
+    int numJoinedPlayers = 0; 
+    int i;
+
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        if (NULL != r->players[i]) {
+           ++numJoinedPlayers; 
+        }
+    }
+
+    return numJoinedPlayers;
+}
+
 packet_t *createRoomAnnouncement(room_t *r, size_t *packSize)
 {
     /* These will vary in size, so have to dynamically allocate them */ 
@@ -24,8 +64,7 @@ packet_t *createRoomAnnouncement(room_t *r, size_t *packSize)
     msg->roomId = htonl(r->id);
     msg->numPlayers = r->numPlayers;
 
-    /* Casting is safe here because it will never be > 4 */
-    msg->numJoinedPlayers = (uint8_t)g_slist_length(r->players);
+    msg->numJoinedPlayers = getNumJoinedPlayers(r);
 
     msg->passwordProtected = (uint8_t)(r->password != NULL);
     msg->roomNameLen = strlen(r->name);
@@ -55,16 +94,19 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     r->numPlayers = m->numPlayers;
     r->id = id;
 
+    memset(r->players, 0, sizeof(uint32_t) * MAX_PLAYERS);
+
     /* Generate the random public ids, these will likely
      * be unique, as they are generated from the random
      * device file */
-    r->publicIds =  (uint32_t*)getRandBytes(sizeof(uint32_t) * r->numPlayers);
+    r->publicIds = (uint32_t*)getRandBytes(sizeof(uint32_t) * r->numPlayers);
 
     player_t *creator = NULL;
     GETPBYID(ntohl(m->playerId), creator);
 
     uv_rwlock_wrlock(&creator->playerLock);
-    r->players = g_slist_prepend(r->players, creator);
+    addPlayer(r, creator);
+    creator->publicId = r->publicIds[0];
     creator->state = JOINED_AND_WAITING;
     creator->curJoinedRoomId = id;
     uv_rwlock_wrunlock(&creator->playerLock);
@@ -72,7 +114,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     return r;
 }
 
-void kickPlayerFromRoom(gpointer p, gpointer msg)
+void kickPlayerFromRoom(player_t *p, const char *msg)
 {
     player_t *player = (player_t*)p;
     const char *kmsg = (const char*)msg;
@@ -83,6 +125,8 @@ void kickPlayerFromRoom(gpointer p, gpointer msg)
 
 void destroyRoom(room_t *r, const char *optionalMsg)
 {
+    int i = 0;
+
     /* Remove the listing, first */
     uv_rwlock_wrlock(g_server->roomsLock);
     g_hash_table_remove(g_server->roomsById, GUINT_TO_POINTER(r->id));
@@ -90,9 +134,12 @@ void destroyRoom(room_t *r, const char *optionalMsg)
     uv_rwlock_wrunlock(g_server->roomsLock);
 
     uv_rwlock_wrlock(&r->roomLock);
-    g_slist_foreach(r->players, (GFunc)kickPlayerFromRoom, 
-                    (gpointer)optionalMsg);
-    g_slist_free(r->players);
+
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        if (r->players[i]) {
+            kickPlayerFromRoom(r->players[i], optionalMsg);
+        }
+    }
 
     free(r->name);
     free(r->password);
@@ -103,15 +150,14 @@ void destroyRoom(room_t *r, const char *optionalMsg)
     free(r); 
 }
 
-void gl_startingState(gpointer v, gpointer d)
+void init_startingState(player_t *curPlayer, player_t *p)
 {
     /* We've already mutated this player's state and trying
      * to obtain the lock will deadlock things */
-    if (d == v) {
+    if (curPlayer == p) {
         return;
     }
 
-    player_t *curPlayer = (player_t*)v;
     /* By obtaining lock, player cannot be removed,
      * so mutability shouldn't cause use after free */
     uv_rwlock_wrlock(&curPlayer->playerLock);
@@ -126,6 +172,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
 
     player_t *pCursor = NULL;
     GSList *lCursor = NULL;
+    int i = 0;
     uint8_t errPktBuf[ERRMSG_SIZE];
     packet_t *joinSuccess = (packet_t*)errPktBuf;
     int playerNum;
@@ -146,7 +193,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     }
 
     uv_rwlock_wrlock(&p->playerLock);
-    r->players = g_slist_prepend(r->players, p);
+    addPlayer(r, p);
     p->curJoinedRoomId = r->id;
 
     /* Because both the player & rooms are write locked, we can
@@ -154,23 +201,19 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
      * player know they joined successfully */
     createErrPacket(joinSuccess, ROOM_SUCCESS);
     reply(joinSuccess, ERRMSG_SIZE, &p->playerAddr, g_server->listenSock);
-    announcePlayer(p, r);
+    announceJoinedPlayers(p, r);
+    announcePlayer(p, r, PLAYER_JOINED);
 
-    if (g_slist_length(r->players) == r->numPlayers) {
+    if (getNumJoinedPlayers(r) == r->numPlayers) {
         r->state = IN_PROGRESS;
         p->state = PLAYING_GAME;
-        p->publicId = r->publicIds[0];
-        lCursor = r->players->next;
 
-        g_slist_foreach(r->players, (GFunc)gl_startingState, p);
-        for (playerNum = 1; playerNum < r->numPlayers; ++playerNum) {
-            /* revisit this, this might cause use after free or deadlocks */
-            pCursor = lCursor->data;
-            uv_rwlock_wrlock(&pCursor->playerLock);
-            pCursor->publicId = r->publicIds[playerNum];
-            lCursor = lCursor->next;
-            uv_rwlock_wrunlock(&pCursor->playerLock);
+        for (i = 0; i < MAX_PLAYERS; ++i) {
+           if (r->players[i]) {
+               init_startingState(r->players[i], p);
+           }
         }
+        
         /* Logic goes here for sending packets to inform players of 
          * state change */
     } else {
@@ -230,7 +273,7 @@ bool validateRoomName(msg_create_room *m)
 void printRoom(gpointer k, gpointer v, gpointer d)
 {
     room_t *r = (room_t*)v;
-    size_t numPlayers = g_slist_length(r->players);
+    size_t numPlayers = getNumJoinedPlayers(r);
      
     PRINT("%-30s %-17u %10lu / %d %-8d\n", r->name, r->id, 
             numPlayers, r->numPlayers, r->state);

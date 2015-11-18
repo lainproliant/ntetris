@@ -35,7 +35,14 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
 
 void removePlayerFromRoom(player_t *p)
 {
+    room_t *r = NULL;
     uv_rwlock_wrlock(&p->playerLock);
+    GETRBYID(p->curJoinedRoomId, r);
+
+    if (r) {
+        announcePlayer(p,  r, PLAYER_LEFT);
+    }
+
     p->curJoinedRoomId = 0;
     p->state = BROWSING_ROOMS;
     p->publicId = 0;
@@ -53,7 +60,7 @@ void destroyPlayer(player_t *p)
 
         if (r != NULL) {
             /* If they are the final player */
-            if (g_slist_length(r->players) == 1) {
+            if (getNumJoinedPlayers(r) == 1) {
                 uv_rwlock_wrunlock(&p->playerLock);
                 destroyRoom(r, "Final player quit");
                 uv_rwlock_wrlock(&p->playerLock);
@@ -63,7 +70,8 @@ void destroyPlayer(player_t *p)
                  * in the room that this player has left. This
                  * will be a status update with game over / forfeit
                  * with the player's identifier (msg_update_client_state) */
-                r->players = g_slist_remove(r->players, p);
+                removePlayerFromRoom(p);
+                removePlayer(r, p);
                 uv_rwlock_wrunlock(&r->roomLock);
             }
         }
@@ -236,96 +244,63 @@ bool validateName(msg_register_client *m)
     return true;
 }
 
-struct playerMsgRoomTuple {
-    size_t msgSize;
-    packet_t *msg; /* The announcement message */
-    player_t *p; /* The player whose lock to exclude */
-    room_t *r; /* The room we are announcing to */
-};
-
-void gl_sendPlayerAnnouncement(gpointer v, gpointer d)
+void announceJoinedPlayers(player_t *p, room_t *r)
 {
-    player_t *p = (player_t*)v;
-    struct playerMsgRoomTuple *pmrt = (struct playerMsgRoomTuple*)d;
+    int i = 0;
+    size_t msgSize = 0;
+    msg_opponent_announce *msg = NULL;
+    packet_t *moa = NULL;
 
-    if (v != pmrt->p) {
-        uv_rwlock_rdlock(&p->playerLock);
-    }
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        player_t *curPlayer = r->players[i];
+        if (curPlayer && curPlayer != p) {
+            uv_rwlock_rdlock(&curPlayer->playerLock);
+            msgSize = sizeof(packet_t) + sizeof(msg_opponent_announce) +
+                      strlen(curPlayer->name);
+            moa = malloc(msgSize);
 
-    reply(pmrt->msg, pmrt->msgSize, &p->playerAddr, g_server->listenSock);
+            moa->type = OPPONENT_ANNOUNCE;
+            msg = (msg_opponent_announce*)moa->data;
+            msg->playerPubId = htons(curPlayer->publicId);
+            msg->joinStatus = PLAYER_JOINED;
+            msg->nameLength = strlen(curPlayer->name);
+            memcpy(msg->playerName, curPlayer->name, msg->nameLength);
+            reply(moa, msgSize, &p->playerAddr, g_server->listenSock);
 
-    if (v != pmrt->p) {
-        uv_rwlock_rdunlock(&p->playerLock);
+            /* Cleanup the sent packet, unlock the player */
+            free(moa);
+            uv_rwlock_rdunlock(&curPlayer->playerLock);
+        }
     }
 }
 
-void gl_announcePlayer(gpointer v, gpointer d)
+void announcePlayer(player_t *p, room_t *r, JOIN_STATUS js)
 {
-    player_t *p = (player_t*)v;
+    int i;
+    size_t msgSize = 0;
     msg_opponent_announce *msg = NULL;
     packet_t *moa = NULL;
-    uint32_t pubId;
-    struct playerMsgRoomTuple *pmrt = (struct playerMsgRoomTuple*)d;
-    GSList *playerCursor = pmrt->r->players;
-    int playerSlot = 0;
-    size_t msgSize = 0;
 
-    if (p != pmrt->p) {
-        uv_rwlock_rdlock(&p->playerLock);
-    }
-
-    while (playerCursor->data != pmrt->p && playerCursor != NULL) {
-        playerCursor = playerCursor->next;
-        ++playerSlot;
-    }
-
-    /* May move this to a function */
     msgSize = sizeof(packet_t) + sizeof(msg_opponent_announce) +
               strlen(p->name);
     moa = malloc(msgSize);
 
     moa->type = OPPONENT_ANNOUNCE;
     msg = (msg_opponent_announce*)moa->data;
-    msg->playerPubId = pubId;
+    msg->playerPubId = htons(p->publicId);
+    msg->joinStatus = (uint8_t)js;
 
-    pmrt->msg = moa;
-    pmrt->msgSize = msgSize;
-
-    /* We reached end of list, couldn't find player, assume something wrong */
-    if (playerCursor == NULL) {
-
-        if (p != pmrt->p) {
-            uv_rwlock_rdunlock(&p->playerLock);
-        }
-
-        goto error;
-    }
-
-    pubId = pmrt->r->publicIds[playerSlot];
-    /* Inform every player of every player */
-     
-    msg->playerPubId = pubId;
     msg->nameLength = strlen(p->name);
     memcpy(msg->playerName, p->name, msg->nameLength);
 
-    if (p != pmrt->p) {
-        uv_rwlock_rdunlock(&p->playerLock);
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        if (r->players[i] && r->players[i] != p) {
+            player_t *curPlayer = r->players[i];
+            uv_rwlock_rdlock(&curPlayer->playerLock);
+            reply(moa, msgSize, &curPlayer->playerAddr, g_server->listenSock);
+            uv_rwlock_rdunlock(&curPlayer->playerLock);
+        }
     }
-    
-    g_slist_foreach(pmrt->r->players, (GFunc)gl_sendPlayerAnnouncement, pmrt);
 
-error:
     free(moa);
-    return;
-}
-
-void announcePlayer(player_t *p, room_t *r)
-{
-    msg_opponent_announce *msg = NULL;
-    struct playerMsgRoomTuple pmrt;
-    pmrt.msg = NULL; 
-    pmrt.r = r;
-    pmrt.p = p;
-
-    g_slist_foreach(r->players, (GFunc)gl_announcePlayer, (gpointer)&pmrt);
 }
