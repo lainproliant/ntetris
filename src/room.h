@@ -6,13 +6,13 @@
 #include <sys/socket.h>
 #include <stdbool.h>
 #include <uv.h>
+#include "player.h"
 
 #define MIN_PLAYERS 2
 #define MAX_PLAYERS 4
 
 struct _msg_create_room;
 struct _packet_t;
-struct _msg_create_room;
 
 typedef enum _ROOM_STATE {
     WAITING_FOR_PLAYERS,
@@ -26,7 +26,7 @@ typedef struct _room_t {
     char *name; /* the name of the room */
     ROOM_STATE state; /* The state of the room */
     unsigned int id; /* the room id */
-    GSList *players; /* Total joined players */
+    player_t *players[MAX_PLAYERS]; /* Total joined players */
     uint32_t *publicIds; /* a list of player public ids per player */
     uint8_t numPlayers; /* maximum number of players */
 } room_t;
@@ -36,6 +36,9 @@ void destroyRoom(room_t *r, const char *optionalMsg);
 unsigned int genRoomId(GHashTable *roomsById);
 void announceRooms(const struct sockaddr *from);
 struct _packet_t *createRoomAnnouncement(room_t *r, size_t *packSize);
+void addPlayer(room_t *r, player_t *p);
+void removePlayer(room_t *r, player_t *p);
+int getNumJoinedPlayers(room_t *r);
 bool validateRoomName(struct _msg_create_room *m);
 int joinPlayer(struct _msg_join_room *m, struct _player_t *p, 
                room_t *r, const struct sockaddr *from);

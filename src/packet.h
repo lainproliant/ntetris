@@ -109,6 +109,7 @@ typedef struct _msg_update_tetrad {
 typedef struct _msg_opponent_announce {
     uint32_t playerPubId;
     uint8_t nameLength;
+    uint8_t joinStatus;
     char playerName[];
 } msg_opponent_announce;
 #pragma pop
