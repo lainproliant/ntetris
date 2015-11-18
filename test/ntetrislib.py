@@ -28,12 +28,16 @@ class OpponentAnnounce(Message):
     type = OPPONENT_ANNOUNCE
 
     def unpack(self, msg):
-        (version,type,self.pid, length) = struct.unpack_from("!BBIB", msg)
-        self.name = struct.unpack_from('!%ds' % length, msg, offset=7)[0]
+        (version,type,self.pid, length, self.status) = struct.unpack_from("!BBIBB", msg)
+        self.name = struct.unpack_from('!%ds' % length, msg, offset=8)[0]
     def getName(self):
         return self.name
     def __str__(self):
-        return "OPPONENT: %s" % self.name
+        if self.status == 0:
+            direction = "JOIN "
+        else:
+            direction = "PART "
+        return direction + "OPPONENT: %s:%d" % (self.name, self.pid)
 
 
 class RegisterTetrad(Message):
