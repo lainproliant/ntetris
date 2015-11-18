@@ -44,5 +44,6 @@ int joinPlayer(struct _msg_join_room *m, struct _player_t *p,
                room_t *r, const struct sockaddr *from);
 void printRooms();
 void printRoom(gpointer k, gpointer v, gpointer d);
+void sendChatMsg(player_t *p, room_t *r, const char *msg, size_t len);
 
 #endif

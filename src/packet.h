@@ -34,6 +34,7 @@ typedef enum _MSG_TYPE {
     PING, /* Client pings back to the server to prevent auto timeout */
     GAME_OVER, /* Game for the room has ended, notifies client of result */
     OPPONENT_ANNOUNCE, /* Opponent info from a given room */
+    CHAT, /* Player chats */
     NUM_MESSAGES
 } MSG_TYPE;
 
@@ -215,7 +216,6 @@ typedef struct _request {
     ssize_t len;
     void *payload;
 } request;
-
 
 void createErrPacket(packet_t *buf, ERR_CODE e);
 void reply(packet_t *p, size_t psize, const struct sockaddr *from, int sock);

@@ -298,3 +298,32 @@ void printRooms()
 
     uv_rwlock_rdunlock(g_server->roomsLock);
 }
+
+void sendChatMsg(player_t *p, room_t *r, const char *msg, size_t len)
+{
+    int i;
+    size_t msgSize = 0;
+    msg_chat_msg *cmsg = NULL;
+    packet_t *mc = NULL;
+
+    msgSize = sizeof(packet_t) + sizeof(msg_chat_msg) + len;
+    mc = malloc(msgSize);
+
+    mc->type = CHAT;
+    cmsg = (msg_chat_msg*)mc->data;
+    cmsg->playerId = htons(p->publicId);
+    cmsg->msgLength = len;
+
+    memcpy(cmsg->msg, msg, len);
+
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        if (r->players[i] && r->players[i] != p) {
+            player_t *curPlayer = r->players[i];
+            uv_rwlock_rdlock(&curPlayer->playerLock);
+            reply(mc, msgSize, &curPlayer->playerAddr, g_server->listenSock);
+            uv_rwlock_rdunlock(&curPlayer->playerLock);
+        }
+    }
+
+    free(mc);
+}
