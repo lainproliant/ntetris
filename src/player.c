@@ -294,7 +294,7 @@ void announcePlayer(player_t *p, room_t *r, JOIN_STATUS js)
             player_t *curPlayer = r->players[i];
             readLockPlayer(curPlayer);
             reply(moa, msgSize, &curPlayer->playerAddr, g_server->listenSock);
-            readUnlockPlayer(p);
+            readUnlockPlayer(curPlayer);
         }
     }
 
