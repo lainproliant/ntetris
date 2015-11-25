@@ -72,6 +72,7 @@ void destroyPlayer(player_t *p)
         }
     }
 
+    readUnlockPlayer(p);
     writeLockPlayer(p);
     free(p->name);
     writeUnlockPlayer(p);
