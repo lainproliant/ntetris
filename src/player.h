@@ -96,6 +96,7 @@ void announcePlayer(player_t *p, struct _room_t *r, JOIN_STATUS js);
 /* Announces successfully joined players to p for to room r */
 void announceJoinedPlayers(player_t *p, struct _room_t *r);
 
+#ifdef DEBUG
 /* locks player struct for reading */
 #define readLockPlayer(p) \
     do { \
@@ -123,5 +124,19 @@ void announceJoinedPlayers(player_t *p, struct _room_t *r);
        WARNING("write unlocking player %s", p->name);\
        uv_rwlock_wrunlock(&p->playerLock);\
     } while (0)
+#else
+/* locks player struct for reading */
+#define readLockPlayer(p) uv_rwlock_rdlock(&p->playerLock);
+
+/* unlocks player struct after reading */
+#define readUnlockPlayer(p) uv_rwlock_rdunlock(&p->playerLock);
+
+/* locks player struct for writing */
+#define writeLockPlayer(p) uv_rwlock_wrlock(&p->playerLock);
+       
+/* unlocks player struct after writing */
+#define writeUnlockPlayer(p) uv_rwlock_wrunlock(&p->playerLock);\
+
+#endif
 
 #endif
