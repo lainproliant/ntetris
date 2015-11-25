@@ -301,11 +301,20 @@ void printRooms()
 void sendChatMsg(player_t *p, room_t *r, packet_t *m)
 {
     int i;
+    char *chatMsg = NULL;
+    size_t cmsgLength;
     size_t msgSize = sizeof(packet_t) + sizeof(msg_chat_msg);
 
     msg_chat_msg *cmsg = (msg_chat_msg*)m->data;
+    cmsgLength = ntohs(cmsg->msgLength);
     cmsg->playerId = htonl(p->publicId);
-    msgSize += ntohs(cmsg->msgLength);
+    msgSize += cmsgLength;
+
+    /* May make this optional, but for now log it */
+    chatMsg = malloc(sizeof(char) * (cmsgLength + 1));
+    strlcpy(chatMsg, cmsg->msg, cmsgLength + 1);
+    PRINT(BOLDMAGENTA "[%s]:" RESET BOLDWHITE "%s\n" RESET, p->name, chatMsg);
+    free(chatMsg);
 
     for (i = 0; i < MAX_PLAYERS; ++i) {
         if (r->players[i] && r->players[i] != p) {
