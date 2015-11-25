@@ -70,9 +70,10 @@ void destroyPlayer(player_t *p)
                 uv_rwlock_wrunlock(&r->roomLock);
             }
         }
+    } else {
+        readUnlockPlayer(p);
     }
 
-    readUnlockPlayer(p);
     writeLockPlayer(p);
     free(p->name);
     writeUnlockPlayer(p);
