@@ -125,7 +125,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             jroom = (msg_join_room*)p->data;
             totalBytes += sizeof(msg_join_room) + \
-                ntohs(jroom->passwordLen) * sizeof(char);
+                jroom->passwordLen * sizeof(char);
             break;
         case ROOM_ANNOUNCE:
             if (len < sizeof(msg_room_announce) + totalBytes) {
@@ -134,7 +134,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
 
             aroom = (msg_room_announce*)p->data;
             totalBytes += sizeof(msg_room_announce) + \
-                ntohs(aroom->roomNameLen) * sizeof(char);
+                aroom->roomNameLen * sizeof(char);
             break;
         
         default:
@@ -455,8 +455,7 @@ room_name_collide:
                    JOINED_AND_WAITING, NUM_STATES)) {
                 incomingRId = pkt_player->curJoinedRoomId; 
                 GETRBYID(incomingRId, joinedRoom);
-                sendChatMsg(pkt_player, joinedRoom, 
-                            m_chat->msg, (size_t)ntohs(m_chat->msgLength));
+                sendChatMsg(pkt_player, joinedRoom, pkt);
             } else {
                 uv_ip4_name((const struct sockaddr_in*)&r->from, senderIP, 16);
                 WARNING("Player id(%u) / ip(%s) in packet is wrong or packet"
