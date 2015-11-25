@@ -13,6 +13,7 @@
 
 struct _msg_create_room;
 struct _packet_t;
+struct _msg_chat_msg;
 
 typedef enum _ROOM_STATE {
     WAITING_FOR_PLAYERS,
@@ -44,6 +45,6 @@ int joinPlayer(struct _msg_join_room *m, struct _player_t *p,
                room_t *r, const struct sockaddr *from);
 void printRooms();
 void printRoom(gpointer k, gpointer v, gpointer d);
-void sendChatMsg(player_t *p, room_t *r, const char *msg, size_t len);
+void sendChatMsg(player_t *p, room_t *r, struct _packet_t *m);
 
 #endif
