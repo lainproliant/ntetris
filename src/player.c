@@ -36,8 +36,8 @@ player_t *createPlayer(const char *name, struct sockaddr sock, unsigned int id)
 void removePlayerFromRoom(player_t *p)
 {
     room_t *r = NULL;
-    uv_rwlock_wrlock(&p->playerLock);
     GETRBYID(p->curJoinedRoomId, r);
+    writeLockPlayer(p);
 
     if (r) {
         announcePlayer(p,  r, PLAYER_LEFT);
@@ -46,30 +46,25 @@ void removePlayerFromRoom(player_t *p)
     p->curJoinedRoomId = 0;
     p->state = BROWSING_ROOMS;
     p->publicId = 0;
-    uv_rwlock_wrunlock(&p->playerLock);
+    writeUnlockPlayer(p);
 }
 
 void destroyPlayer(player_t *p)
 {
     room_t *r = NULL;
-    uv_rwlock_wrlock(&p->playerLock);
+    readLockPlayer(p);
     PRINT("Destroying player object[%p] (%s)\n", p, p->name);
 
     if (p->state >= JOINED_AND_WAITING) {
        GETRBYID(p->curJoinedRoomId, r); 
+       readUnlockPlayer(p);
 
         if (r != NULL) {
             /* If they are the final player */
             if (getNumJoinedPlayers(r) == 1) {
-                uv_rwlock_wrunlock(&p->playerLock);
                 destroyRoom(r, "Final player quit");
-                uv_rwlock_wrlock(&p->playerLock);
             } else {
                 uv_rwlock_wrlock(&r->roomLock);
-                /* TODO: Add logic here for notifying players
-                 * in the room that this player has left. This
-                 * will be a status update with game over / forfeit
-                 * with the player's identifier (msg_update_client_state) */
                 removePlayerFromRoom(p);
                 removePlayer(r, p);
                 uv_rwlock_wrunlock(&r->roomLock);
@@ -77,8 +72,9 @@ void destroyPlayer(player_t *p)
         }
     }
 
+    writeLockPlayer(p);
     free(p->name);
-    uv_rwlock_wrunlock(&p->playerLock);
+    writeUnlockPlayer(p);
     uv_rwlock_destroy(&p->playerLock);
     free(p);
 }
@@ -254,7 +250,7 @@ void announceJoinedPlayers(player_t *p, room_t *r)
     for (i = 0; i < MAX_PLAYERS; ++i) {
         player_t *curPlayer = r->players[i];
         if (curPlayer && curPlayer != p) {
-            uv_rwlock_rdlock(&curPlayer->playerLock);
+            readLockPlayer(curPlayer);
             msgSize = sizeof(packet_t) + sizeof(msg_opponent_announce) +
                       strlen(curPlayer->name);
             moa = malloc(msgSize);
@@ -269,7 +265,7 @@ void announceJoinedPlayers(player_t *p, room_t *r)
 
             /* Cleanup the sent packet, unlock the player */
             free(moa);
-            uv_rwlock_rdunlock(&curPlayer->playerLock);
+            readUnlockPlayer(curPlayer);
         }
     }
 }
@@ -296,9 +292,9 @@ void announcePlayer(player_t *p, room_t *r, JOIN_STATUS js)
     for (i = 0; i < MAX_PLAYERS; ++i) {
         if (r->players[i] && r->players[i] != p) {
             player_t *curPlayer = r->players[i];
-            uv_rwlock_rdlock(&curPlayer->playerLock);
+            readLockPlayer(curPlayer);
             reply(moa, msgSize, &curPlayer->playerAddr, g_server->listenSock);
-            uv_rwlock_rdunlock(&curPlayer->playerLock);
+            readUnlockPlayer(p);
         }
     }
 

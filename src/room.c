@@ -28,7 +28,6 @@ void addPlayer(room_t *r, player_t *p)
 {
     /* Find the first NULL slot in the
      * player list */ 
-    int nullSlot = 0; 
     int i;
     for (i = 0; i< MAX_PLAYERS; ++i) {
         if (r->players[i] == NULL) {
@@ -104,12 +103,12 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
     player_t *creator = NULL;
     GETPBYID(ntohl(m->playerId), creator);
 
-    uv_rwlock_wrlock(&creator->playerLock);
+    writeLockPlayer(creator);
     addPlayer(r, creator);
     creator->publicId = r->publicIds[0];
     creator->state = JOINED_AND_WAITING;
     creator->curJoinedRoomId = id;
-    uv_rwlock_wrunlock(&creator->playerLock);
+    writeUnlockPlayer(creator);
 
     return r;
 }
@@ -160,9 +159,9 @@ void init_startingState(player_t *curPlayer, player_t *p)
 
     /* By obtaining lock, player cannot be removed,
      * so mutability shouldn't cause use after free */
-    uv_rwlock_wrlock(&curPlayer->playerLock);
+    writeLockPlayer(curPlayer);
     curPlayer->state = PLAYING_GAME;
-    uv_rwlock_wrunlock(&curPlayer->playerLock);
+    writeUnlockPlayer(curPlayer);
 }
 
 int joinPlayer(msg_join_room *m, player_t *p, room_t *r, 
@@ -192,7 +191,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
         return ROOM_FULL;
     }
 
-    uv_rwlock_wrlock(&p->playerLock);
+    writeLockPlayer(p);
     addPlayer(r, p);
     p->curJoinedRoomId = r->id;
 
@@ -220,7 +219,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
         p->state = JOINED_AND_WAITING;
     }
 
-    uv_rwlock_wrunlock(&p->playerLock);
+    writeUnlockPlayer(p);
     uv_rwlock_wrunlock(&r->roomLock);
     
     return NULL;
@@ -319,9 +318,9 @@ void sendChatMsg(player_t *p, room_t *r, const char *msg, size_t len)
     for (i = 0; i < MAX_PLAYERS; ++i) {
         if (r->players[i] && r->players[i] != p) {
             player_t *curPlayer = r->players[i];
-            uv_rwlock_rdlock(&curPlayer->playerLock);
+            readLockPlayer(curPlayer);
             reply(mc, msgSize, &curPlayer->playerAddr, g_server->listenSock);
-            uv_rwlock_rdunlock(&curPlayer->playerLock);
+            readUnlockPlayer(curPlayer);
         }
     }
 
