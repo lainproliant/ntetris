@@ -130,6 +130,7 @@ void randomRegTetrad(room_t *r)
     size_t i;
     uint8_t regBuf[sizeof(packet_t) + sizeof(msg_register_tetrad)];
     packet_t *regPacket = (packet_t*)regBuf;
+    regPacket->type = REGISTER_TETRAD;
     msg_register_tetrad *m = (msg_register_tetrad*)regPacket->data;
     m->shape = (uint8_t) (getRandByte() % 7);
 
