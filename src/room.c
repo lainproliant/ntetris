@@ -99,6 +99,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
      * be unique, as they are generated from the random
      * device file */
     r->publicIds = (uint32_t*)getRandBytes(sizeof(uint32_t) * r->numPlayers);
+    r->entropyPool = (uint8_t*)getRandBytes(sizeof(uint8_t) * AOT_BLOCKS);
 
     player_t *creator = NULL;
     GETPBYID(ntohl(m->playerId), creator);
@@ -143,6 +144,7 @@ void destroyRoom(room_t *r, const char *optionalMsg)
     free(r->name);
     free(r->password);
     free(r->publicIds);
+    free(r->entropyPool);
     uv_rwlock_wrunlock(&r->roomLock);
     uv_rwlock_destroy(&r->roomLock);
 
@@ -151,6 +153,9 @@ void destroyRoom(room_t *r, const char *optionalMsg)
 
 void init_startingState(player_t *curPlayer, player_t *p)
 {
+    uint8_t errPktBuf[ERRMSG_SIZE];
+    packet_t *gameStartMsg = (packet_t*)errPktBuf;
+    createErrPacket(gameStartMsg, GAME_BEGIN);
     /* We've already mutated this player's state and trying
      * to obtain the lock will deadlock things */
     if (curPlayer == p) {
@@ -160,6 +165,7 @@ void init_startingState(player_t *curPlayer, player_t *p)
     /* By obtaining lock, player cannot be removed,
      * so mutability shouldn't cause use after free */
     writeLockPlayer(curPlayer);
+    reply(gameStartMsg, ERRMSG_SIZE, &curPlayer->playerAddr, g_server->listenSock);
     curPlayer->state = PLAYING_GAME;
     writeUnlockPlayer(curPlayer);
 }
@@ -174,6 +180,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     int i = 0;
     uint8_t errPktBuf[ERRMSG_SIZE];
     packet_t *joinSuccess = (packet_t*)errPktBuf;
+    packet_t *gameBeginMsg = (packet_t*)errPktBuf;
     int playerNum;
 
     if (r->password != NULL) {
@@ -206,6 +213,8 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
     if (getNumJoinedPlayers(r) == r->numPlayers) {
         r->state = IN_PROGRESS;
         p->state = PLAYING_GAME;
+        createErrPacket(gameBeginMsg, GAME_BEGIN);
+        reply(gameBeginMsg, ERRMSG_SIZE, &p->playerAddr, g_server->listenSock);
 
         for (i = 0; i < MAX_PLAYERS; ++i) {
            if (r->players[i]) {

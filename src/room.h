@@ -10,6 +10,7 @@
 
 #define MIN_PLAYERS 2
 #define MAX_PLAYERS 4
+#define AOT_BLOCKS 4096
 
 struct _msg_create_room;
 struct _packet_t;
@@ -29,6 +30,7 @@ typedef struct _room_t {
     unsigned int id; /* the room id */
     player_t *players[MAX_PLAYERS]; /* Total joined players */
     uint32_t *publicIds; /* a list of player public ids per player */
+    uint8_t *entropyPool; /* a large block of random bytes for blocks */
     uint8_t numPlayers; /* maximum number of players */
 } room_t;
 

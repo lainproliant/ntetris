@@ -65,6 +65,7 @@ typedef enum _ERROR_CODE {
    BAD_NUM_PLAYERS = 10, /* Player count invalid for room */
    ROOM_FULL = 11, /* The room is now full, you waited too long */
    ROOM_SUCCESS = 12, /* Room created / joined sucessfully */
+   GAME_BEGIN = 13, /* Everybody is in, start the game */
    NUM_ERR_CODES
 } ERR_CODE;
 
