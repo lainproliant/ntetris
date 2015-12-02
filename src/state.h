@@ -16,17 +16,17 @@ typedef struct _STATE {
     WINDOW* fieldwin;
     WINDOW* statuswin;
     int keymap[9];
-#endif
 
     /* settings */
     int init_level;
     int line_clear_timeout;
+    int pause_f;
+#endif
 
     unsigned long ticks;
     int line_clear_t;
     int line_clear_f;
     int game_over_f;
-    int pause_f;
 
     struct _TETRAD* tetrad;
 
