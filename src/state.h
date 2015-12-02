@@ -21,6 +21,7 @@ typedef struct _STATE {
     int init_level;
     int line_clear_timeout;
     int pause_f;
+    char clock[TETRIS_CLOCK_BUFSIZE];
 #endif
 
     unsigned long ticks;
@@ -38,10 +39,6 @@ typedef struct _STATE {
     int lines;
     int score;
     int queue_size;
-
-#ifdef CLIENT
-    char clock[TETRIS_CLOCK_BUFSIZE];
-#endif
 
     int Bx, By; // playfield size vector
     int Sx, Sy; // size of playfield window, in characters
