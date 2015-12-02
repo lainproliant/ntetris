@@ -23,6 +23,8 @@
 #include "macros.h"
 #include "cmd.h"
 #include "server.h"
+#include "room.h"
+#include "rand.h"
 
 #define DEFAULT_PORT 48879
 
@@ -115,9 +117,48 @@ void on_type(uv_fs_t *req)
     }
 }
 
+void sendRandTetToPlayer(packet_t *pkt, player_t *p)
+{
+    readLockPlayer(p); 
+    reply(pkt, sizeof(packet_t) + sizeof(msg_register_tetrad),
+          &p->playerAddr, g_server->listenSock);
+    readUnlockPlayer(p);
+}
+
+void randomRegTetrad(room_t *r)
+{
+    size_t i;
+    uint8_t regBuf[sizeof(packet_t) + sizeof(msg_register_tetrad)];
+    packet_t *regPacket = (packet_t*)regBuf;
+    msg_register_tetrad *m = (msg_register_tetrad*)regPacket->data;
+    m->shape = (uint8_t) (getRandByte() % 7);
+
+    for (i = 0; i < MAX_PLAYERS; ++i) {
+        if (r->players[i]) {
+            sendRandTetToPlayer(regPacket, r->players[i]);
+        }
+    }
+}
+
 void idler_task(uv_idle_t *handle)
 {
+    uv_rwlock_rdlock(g_server->roomsLock);
+    GHashTableIter iter;
+    gpointer key, value;
 
+    g_hash_table_iter_init(&iter, g_server->roomsById);
+    while (g_hash_table_iter_next (&iter, &key, &value)) {
+        room_t *r = (room_t*)value; 
+
+        if (r->state == IN_PROGRESS) {
+            /* For now this is totally bogus, just randomly
+             * generating a tetrad for every player in the
+             * room */ 
+            randomRegTetrad(r); 
+        }
+    }
+
+    uv_rwlock_rdunlock(g_server->roomsLock);
 }
 
 void destroy_msg(uv_work_t *req, int status)
