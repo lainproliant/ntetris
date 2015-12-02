@@ -3,6 +3,7 @@
  * (c) 2008 Lee Supe (lain_proliant)
  * Released under the GNU General Public License
  */
+#define CLIENT
 
 #include <stdio.h>
 #include <stdlib.h>

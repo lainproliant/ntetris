@@ -3,6 +3,9 @@
 #ifndef __TETRIS_H
 #define __TETRIS_H
 
+#include "constants.h"
+#include "state.h"
+
 /*
  * ntetris: a tetris clone
  * (c) 2008 Lee Supe (lain_proliant)
@@ -25,18 +28,6 @@ const char* shapes[] = {
     "-#--###-#-###---###--#---###-#--", // T
     "##---##--####---##---##--####---"  // Z
 };
-
-#define TETRIS_CLOCK_BUFSIZE    16
-#define CLEARED                 127
-#define REFRESH_DELAY           50
-#define INIT_SPEED              1000/REFRESH_DELAY
-#define DEFAULT_CLEAR_DELAY     500/REFRESH_DELAY
-#define DELTA_SPEED             1
-#define TETRIS_STATUS_HEIGHT    20
-#define TETRIS_STATUS_WIDTH     17
-#define TETRIS_KEYS             9
-#define TETRIS_MAX_KEYCODE      410
-#define TETRIS_BUFSIZE          256
 
 const char* keymap_desc[] = {
     "quit",
@@ -87,50 +78,6 @@ typedef struct _TETRAD {
     int rot;      // current rotation
 } TETRAD;
 
-typedef struct _STATE {
-    GQueue* queue;
-    char* field;
-
-    WINDOW* fieldwin;
-    WINDOW* statuswin;
-
-    int keymap[9];
-
-    /* settings */
-    int init_level;
-    int line_clear_timeout;
-
-    unsigned long ticks;
-    int line_clear_t;
-    int line_clear_f;
-    int game_over_f;
-    int pause_f;
-
-    TETRAD* tetrad;
-
-    int status;
-    int init_speed;
-    int speed;
-    int delta;
-    int level;
-    int lines;
-    int score;
-    int queue_size;
-
-    char clock[TETRIS_CLOCK_BUFSIZE];
-
-    int Bx, By; // playfield size vector
-    int Sx, Sy; // size of playfield window, in characters
-    int Sbx, Sby; // size of status window, in characters
-    int Wx, Wy; // size of standard window
-
-    // boolean switches
-    int do_clear;
-    int do_rotate_timeout_reset;
-    int do_dissolve;
-    int do_pause_blocks;
-
-} STATE;
 
 int ParseOptions(STATE*, int, char**);
 

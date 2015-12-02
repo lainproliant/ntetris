@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <uv.h>
 #include "player.h"
+#include "state.h"
 
 #define MIN_PLAYERS 2
 #define MAX_PLAYERS 4
@@ -32,6 +33,7 @@ typedef struct _room_t {
     uint32_t *publicIds; /* a list of player public ids per player */
     uint8_t *entropyPool; /* a large block of random bytes for blocks */
     uint8_t numPlayers; /* maximum number of players */
+    STATE **gameStates; /* A list of the game states */
 } room_t;
 
 room_t *createRoom(struct _msg_create_room *m, unsigned int id);

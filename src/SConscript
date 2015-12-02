@@ -27,7 +27,7 @@ if 'sunos' in sys.platform:
 
 env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
-env.Program('ntetris', ntetris_cfiles, LIBS=liblist, CFLAGS=cflags, LINKFLAGS=linkflags)
 
+env.Program('ntetris', ntetris_cfiles, LIBS=liblist, CFLAGS=cflags, LINKFLAGS=linkflags)
 env.Program('ntetris_srv', ntetris_srv_files, LIBS=srvliblist, CFLAGS=cflags, LINKFLAGS=linkflags)
 
