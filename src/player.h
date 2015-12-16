@@ -38,15 +38,15 @@ typedef enum _PLAYER_STATE {
 } PLAYER_STATE;
 
 typedef struct _player_t {
+    uv_rwlock_t playerLock; /* a more granular lock for the player */
+    char *name; /* The player's name */
     uint64_t lastpkt_ts; /* The ms/ns timestamp of last command packet */ 
     int secBeforeNextPingMax; /* max seconds before next ping */
     unsigned int playerId;  /* The unique playerId */
     unsigned int curJoinedRoomId; /* The room the player is in */
     struct sockaddr playerAddr; /* Their IP + port combo */
     PLAYER_STATE state; /* We could ++ to advance to next state */
-    char *name; /* The player's name */
     uint32_t publicId; /* Used by other players in the same room */
-    uv_rwlock_t playerLock; /* a more granular lock for the player */
 } player_t;
 
 /* Instantiate the player object */
