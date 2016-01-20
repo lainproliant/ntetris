@@ -1,6 +1,12 @@
 #!/usr/bin/python
 import sys, random
+import queue
+import time
 from PySide import QtCore, QtGui
+from ntetrislib import *
+g_tetradMsgQ = []
+g_clientMsgQ = []
+g_stateMsgQ = []
 
 class Communicate(QtCore.QObject):
     
@@ -8,9 +14,13 @@ class Communicate(QtCore.QObject):
 
 class Tetris(QtGui.QMainWindow):
     
-    def __init__(self):
-        super(Tetris, self).__init__()
+    def __init__(self, msgQ):
+        global g_tetradMsgQ
+        global g_clientMsgQ
+        global g_stateMsgQ
 
+        super(Tetris, self).__init__()
+        g_tetradMsgQ, g_clientMsgQ, g_stateMsgQ = msgQ
         self.setGeometry(400, 400, 280, 480)
         self.setWindowTitle('ntetris Debug GUI')
         self.Tetrisboard = Board(self)
@@ -20,8 +30,8 @@ class Tetris(QtGui.QMainWindow):
         self.statusbar = self.statusBar()
         self.Tetrisboard.c.msgToSB[str].connect(self.statusbar.showMessage)
             
-        self.Tetrisboard.start()
         self.center()
+        self.Tetrisboard.start()
 
     def center(self):
         
@@ -42,8 +52,6 @@ class Board(QtGui.QFrame):
 
         self.timer = QtCore.QBasicTimer()
         self.isWaitingAfterLine = False
-        self.curPiece = Shape()
-        self.nextPiece = Shape()
         self.curX = 0
         self.curY = 0
         self.numLinesRemoved = 0
@@ -55,6 +63,9 @@ class Board(QtGui.QFrame):
         self.clearBoard()
         
         self.c = Communicate()
+        
+        self.curPiece = Shape()
+        self.nextPiece = Shape()
 
         self.nextPiece.setRandomShape()
 
@@ -219,7 +230,7 @@ class Board(QtGui.QFrame):
 
         if numFullLines > 0:
             self.numLinesRemoved = self.numLinesRemoved + numFullLines
-            print self.numLinesRemoved
+            print(self.numLinesRemoved)
             self.c.msgToSB.emit(str(self.numLinesRemoved))
             self.isWaitingAfterLine = True
             self.curPiece.setShape(Tetrominoes.NoShape)
@@ -319,7 +330,16 @@ class Shape(object):
         self.pieceShape = shape
 
     def setRandomShape(self):
-        self.setShape(random.randint(1, 7))
+        global g_tetradMsgQ
+
+        while g_tetradMsgQ.empty():
+            time.sleep(0.1)
+        
+        shapeMsg = g_tetradMsgQ.get() 
+
+        print("Got shape!")
+ 
+        self.setShape(shapeMsg.getShape())
 
     def x(self, index):
         return self.coords[index][0]
@@ -393,13 +413,3 @@ class Shape(object):
 
         return result
 
-def main():
-    
-    app = QtGui.QApplication(sys.argv)
-    t = Tetris()
-    t.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    main()

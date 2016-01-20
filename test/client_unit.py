@@ -8,6 +8,7 @@ import random
 import time
 import threading
 from select import select
+from client_gui import *
 
 g_msgQ = queue.Queue()
 g_sendQ = queue.Queue()
@@ -115,6 +116,20 @@ def commander():
             print("ls create update join say quit")
     print("[*] Leaving command processor")
 
+def gameThread(msgQ):
+    t = Tetris(msgQ)
+    t.show()
+
+
+def startGame():
+    tetradMsgQ = queue.Queue()
+    stateMsgQ = queue.Queue()
+    clientMsgQ = queue.Queue()
+
+    game_thread = threading.Thread(target=gameThread, args={(tetradMsgQ, clientMsgQ, stateMsgQ),})
+    game_thread.start()
+    return (game_thread, tetradMsgQ, clientMsgQ, stateMsgQ)
+ 
 
 def main():
     global g_msgQ
@@ -155,6 +170,12 @@ def main():
 
     g_sendQ.put(message.pack())
 
+    clientMsgQ = []
+    tetradMsgQ = []
+    stateMsgQ = []
+    game_thread = []
+    app = QtGui.QApplication(sys.argv)
+
     try:
         while not g_app_exiting:
             if not g_msgQ.empty():
@@ -163,10 +184,19 @@ def main():
                     msg = ErrorMsg()
                     msg.unpack(data)
                     print(msg) 
+                    if msg.getVal() == GAME_BEGIN:
+                        print("Starting game")
+                        game_thread, tetradMsgQ, clientMsgQ, stateMsgQ = startGame()
                 elif int(data[1]) == UPDATE_TETRAD:
                     msg = UpdateTetrad()
                     msg.unpack(data)
                     print(msg)
+                elif int(data[1]) == REGISTER_TETRAD:
+                    msg = RegisterTetrad()
+                    msg.unpack(data)
+                    print("Got a tetrad")
+                    tetradMsgQ.put(msg)
+
                 elif int(data[1]) == UPDATE_CLIENT_STATE:
                     msg = UpdateClientState()
                     msg.unpack(data)
