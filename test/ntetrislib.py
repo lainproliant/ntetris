@@ -19,6 +19,20 @@ OPPONENT_ANNOUNCE = 15
 CHAT_MSG = 16
 NUM_MESSAGES = 17
 
+UNSUPPORTED_MSG = 1 
+ILLEGAL_MSG = 2 
+BAD_LEN = 3 
+BAD_PROTOCOL = 4 
+BAD_NAME = 5 
+BAD_ROOM_NAME = 6 
+SUCCESS = 7 
+BAD_PASSWORD = 8 
+BAD_ROOM_NUM = 9 
+BAD_NUM_PLAYERS = 10 
+ROOM_FULL = 11 
+ROOM_SUCCESS = 12 
+GAME_BEGIN = 13
+
 
 class Message:
     type = None
@@ -62,6 +76,12 @@ class OpponentAnnounce(Message):
 
 class RegisterTetrad(Message):
     type = REGISTER_TETRAD
+
+    def unpack(self, msg):
+        (version,type,self.shape) = struct.unpack("!BBB",msg)
+
+    def getShape(self):
+        return self.shape
 
 class RegisterClient(Message): 
     type = REGISTER_CLIENT
@@ -285,6 +305,8 @@ class ErrorMsg(Message):
         self.version = version
         self.type = type
         self.val = val
+    def getVal(self):
+        return self.val
 
     def __str__(self):
         return "%s: val=%d" % (self.msg_dict.get(int(self.val),"ERROR"), int(self.val))

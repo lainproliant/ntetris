@@ -1,18 +1,52 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 import sys, random
+import queue
+import time
 from PySide import QtCore, QtGui
+from ntetrislib import *
+from client_unit import *
 
 class Communicate(QtCore.QObject):
     
     msgToSB = QtCore.Signal(str)
 
+class NetworkThread (QtCore.QThread):
+    g_tetradMsgQ = []
+    g_clientMsgQ = []
+    g_stateMsgQ = []
+    g_threadExit = False
+
+    def run(self):
+        argv = sys.argv
+    
+        if len(argv) != 4:
+            print("Usage: ./client_gui.py hostname port name")
+            return
+
+        # Pop the head and ignore
+        argv = argv[1:]
+
+        hostname, port, name = argv[0], argv[1], argv[2]
+        client = NTetrisClient(hostname,port,name)
+        self.g_tetradMsgQ, self.g_clientMsgQ, self.g_stateMsgQ = client.startGame()
+        self.exec_()
+
+    def getQueues(self):
+        return (self.g_tetradMsgQ, self.g_clientMsgQ, self.g_stateMsgQ)
+    
 class Tetris(QtGui.QMainWindow):
     
     def __init__(self):
+        
         super(Tetris, self).__init__()
-
         self.setGeometry(400, 400, 280, 480)
         self.setWindowTitle('ntetris Debug GUI')
+
+        self.client_thread = NetworkThread()
+        self.client_thread.start()
+
+        time.sleep(5)
+
         self.Tetrisboard = Board(self)
 
         self.setCentralWidget(self.Tetrisboard)
@@ -20,8 +54,8 @@ class Tetris(QtGui.QMainWindow):
         self.statusbar = self.statusBar()
         self.Tetrisboard.c.msgToSB[str].connect(self.statusbar.showMessage)
             
-        self.Tetrisboard.start()
         self.center()
+        self.Tetrisboard.start()
 
     def center(self):
         
@@ -42,8 +76,6 @@ class Board(QtGui.QFrame):
 
         self.timer = QtCore.QBasicTimer()
         self.isWaitingAfterLine = False
-        self.curPiece = Shape()
-        self.nextPiece = Shape()
         self.curX = 0
         self.curY = 0
         self.numLinesRemoved = 0
@@ -55,6 +87,9 @@ class Board(QtGui.QFrame):
         self.clearBoard()
         
         self.c = Communicate()
+        
+        self.curPiece = Shape(parent)
+        self.nextPiece = Shape(parent)
 
         self.nextPiece.setRandomShape()
 
@@ -219,7 +254,7 @@ class Board(QtGui.QFrame):
 
         if numFullLines > 0:
             self.numLinesRemoved = self.numLinesRemoved + numFullLines
-            print self.numLinesRemoved
+            print(self.numLinesRemoved)
             self.c.msgToSB.emit(str(self.numLinesRemoved))
             self.isWaitingAfterLine = True
             self.curPiece.setShape(Tetrominoes.NoShape)
@@ -232,7 +267,7 @@ class Board(QtGui.QFrame):
         self.curX = Board.BoardWidth / 2 + 1
         self.curY = Board.BoardHeight - 1 + self.curPiece.minY()
 
-        if not self.tryMove(self.curPiece, self.curX, self.curY):
+        if not self.tryMove(self.curPiece, int(self.curX), int(self.curY)):
             self.curPiece.setShape(Tetrominoes.NoShape)
             self.timer.stop()
             self.isStarted = False
@@ -299,11 +334,11 @@ class Shape(object):
         ((1, -1),    (0, -1),    (0, 0),     (0, 1))
     )
 
-    def __init__(self):
+    def __init__(self, tetrisObj):
         
         self.coords = [[0,0] for i in range(4)]
         self.pieceShape = Tetrominoes.NoShape
-
+        self.tetrisObj = tetrisObj
         self.setShape(Tetrominoes.NoShape)
 
     def shape(self):
@@ -319,7 +354,16 @@ class Shape(object):
         self.pieceShape = shape
 
     def setRandomShape(self):
-        self.setShape(random.randint(1, 7))
+        g_tetradMsgQ, g_clientMsgQ, g_stateMsgQ = self.tetrisObj.client_thread.getQueues()
+
+        while g_tetradMsgQ.empty():
+            time.sleep(0.1)
+        
+        shapeMsg = g_tetradMsgQ.get() 
+
+        print("Got shape! " + str(shapeMsg.getShape()))
+ 
+        self.setShape(int(shapeMsg.getShape()))
 
     def x(self, index):
         return self.coords[index][0]
@@ -392,9 +436,7 @@ class Shape(object):
             result.setY(i, self.x(i))
 
         return result
-
-def main():
-    
+def main():    
     app = QtGui.QApplication(sys.argv)
     t = Tetris()
     t.show()
