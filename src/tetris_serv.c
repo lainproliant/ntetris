@@ -25,6 +25,7 @@
 #include "server.h"
 #include "room.h"
 #include "rand.h"
+#include "game.h"
 
 #define DEFAULT_PORT 48879
 
@@ -146,17 +147,32 @@ void idler_task(uv_idle_t *handle)
     uv_rwlock_rdlock(g_server->roomsLock);
     GHashTableIter iter;
     gpointer key, value;
+    size_t i;
+    time_t timeDiff;
 
     g_hash_table_iter_init(&iter, g_server->roomsById);
     while (g_hash_table_iter_next (&iter, &key, &value)) {
         room_t *r = (room_t*)value; 
 
+#if 1
         if (r->state == IN_PROGRESS) {
             /* For now this is totally bogus, just randomly
              * generating a tetrad for every player in the
              * room */ 
-            randomRegTetrad(r); 
+            for (i = 0; i < r->numPlayers; ++i) {
+                if (r->gameStates[i]) {
+                    timeDiff = r->gameStates[i]->lastUpdate - time(NULL);
+
+                    if (speedToDelay(r->gameStates[i]->speed) >= timeDiff) { 
+                        /* This will be a game update (tick) function */
+                        randomRegTetrad(r);
+                        /* The "tick" function will likely do this part */
+                        r->gameStates[i]->lastUpdate = time(NULL);
+                    }
+                }
+            }
         }
+#endif
     }
 
     uv_rwlock_rdunlock(g_server->roomsLock);

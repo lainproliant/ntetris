@@ -24,6 +24,7 @@ typedef struct _STATE {
     char clock[TETRIS_CLOCK_BUFSIZE];
 #endif
 
+    time_t lastUpdate;
     unsigned long ticks;
     int line_clear_t;
     int line_clear_f;

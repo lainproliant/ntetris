@@ -7,6 +7,7 @@
 #include "packet.h"
 #include "macros.h"
 #include "room.h"
+#include "game.h"
 
 #ifdef __linux__
 #include <bsd/stdlib.h>
@@ -99,7 +100,7 @@ room_t *createRoom(msg_create_room *m, unsigned int id)
      * be unique, as they are generated from the random
      * device file */
     r->publicIds = (uint32_t*)getRandBytes(sizeof(uint32_t) * r->numPlayers);
-    //r->entropyPool = (uint8_t*)getRandBytes(sizeof(uint8_t) * AOT_BLOCKS);
+    r->entropyPool = (uint8_t*)getRandBytes(sizeof(uint8_t) * AOT_BLOCKS);
 
     player_t *creator = NULL;
     GETPBYID(ntohl(m->playerId), creator);
@@ -144,7 +145,7 @@ void destroyRoom(room_t *r, const char *optionalMsg)
     free(r->name);
     free(r->password);
     free(r->publicIds);
-    //free(r->entropyPool);
+    free(r->entropyPool);
     uv_rwlock_wrunlock(&r->roomLock);
     uv_rwlock_destroy(&r->roomLock);
 
@@ -219,6 +220,7 @@ int joinPlayer(msg_join_room *m, player_t *p, room_t *r,
         for (i = 0; i < MAX_PLAYERS; ++i) {
            if (r->players[i]) {
                init_startingState(r->players[i], p);
+               r->gameStates[i] = initState();
            }
         }
         
