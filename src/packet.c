@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "macros.h"
+#include "game.h"
 #include <errno.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -182,21 +183,25 @@ void handle_msg(uv_work_t *req)
      * createErrPacket */
     MSG_TYPE packetType = (MSG_TYPE)pkt->type;
     msg_err errMsg;
-    msg_register_client *rclient = NULL;
-    msg_create_room *croom = NULL;
     char *clientName = NULL;
     char *roomName = NULL;
     player_t *newPlayer = NULL;
     player_t *pkt_player = NULL;
+
+    /* Different possible message types */
+    msg_register_client *rclient = NULL;
+    msg_create_room *croom = NULL;
     msg_reg_ack m_ack;
     msg_reg_ack *m_recAck = NULL;
     msg_ping *m_recPing = NULL;
     msg_disconnect_client *m_dc = NULL;
     msg_list_rooms *m_lr = NULL;
     msg_join_room *m_jr = NULL;
+    msg_chat_msg *m_chat = NULL;
+    msg_user_action *m_userAction = NULL;
+
     room_t *newRoom = NULL;
     room_t *joinedRoom = NULL;
-    msg_chat_msg *m_chat = NULL;
     uint32_t incomingId;
     uint32_t incomingRId;
     ERR_CODE roomJoinRes;
@@ -232,6 +237,7 @@ void handle_msg(uv_work_t *req)
         case ERR_PACKET:
         case KICK_CLIENT:
         case UPDATE_CLIENT_STATE:
+        case UPDATE_TETRAD:
             createErrPacket(errPkt, ILLEGAL_MSG);
             reply(errPkt, ERRMSG_SIZE, &r->from, g_server->listenSock);
             return;
@@ -372,6 +378,17 @@ room_name_collide:
         case REG_ACK:
             m_recAck = (msg_reg_ack*)(pkt->data);
             regPlayer(m_recAck, &r->from);
+            break;
+
+        case USER_ACTION:
+            m_userAction = (msg_user_action*)(pkt->data);
+            incomingId = ntohl(m_userAction->playerId);
+            GETPBYID(incomingId, pkt_player);
+            if (authPlayerPkt(pkt_player, &r->from, 
+                    PLAYING_GAME, PLAYING_GAME)) {
+               parsePlayerAction(m_userAction);
+            }
+            
             break;
 
         case PING:
