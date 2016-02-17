@@ -51,4 +51,47 @@ void printRooms();
 void printRoom(gpointer k, gpointer v, gpointer d);
 void sendChatMsg(player_t *p, room_t *r, struct _packet_t *m);
 
+#ifdef DEBUG
+/* locks room struct for reading */
+#define readLockRoom(r) \
+    do { \
+       WARNING("read locking room %s", r->name);\
+       uv_rwlock_rdlock(&r->roomLock);\
+    } while (0)
+
+/* unlocks player struct after reading */
+#define readUnlockRoom(r) \
+    do { \
+       WARNING("read unlocking room %s", r->name);\
+       uv_rwlock_rdunlock(&r->roomLock);\
+    } while (0)
+
+/* locks player struct for writing */
+#define writeLockRoom(r) \
+    do { \
+       WARNING("write locking room %s", r->name);\
+       uv_rwlock_wrlock(&r->roomLock);\
+    } while (0)
+
+/* unlocks player struct after writing */
+#define writeUnlockRoom(r) \
+    do { \
+       WARNING("write unlocking room %s", r->name);\
+       uv_rwlock_wrunlock(&r->roomLock);\
+    } while (0)
+#else
+/* locks player struct for reading */
+#define readLockRoom(r) uv_rwlock_rdlock(&r->roomLock);
+
+/* unlocks player struct after reading */
+#define readUnlockRoom(r) uv_rwlock_rdunlock(&r->roomLock);
+
+/* locks player struct for writing */
+#define writeLockRoom(r) uv_rwlock_wrlock(&r->roomLock);
+       
+/* unlocks player struct after writing */
+#define writeUnlockRoom(r) uv_rwlock_wrunlock(&r->roomLock);\
+
+#endif
+
 #endif

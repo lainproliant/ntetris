@@ -47,6 +47,7 @@ bool validateLength(packet_t *p, ssize_t len, MSG_TYPE t, ssize_t *expectedSize)
     msg_join_room *jroom = NULL;
     msg_room_announce *aroom = NULL;
     msg_chat_msg *chat = NULL;
+
     ssize_t totalBytes = sizeof(packet_t);
 
     switch(t) {
@@ -386,7 +387,7 @@ room_name_collide:
             GETPBYID(incomingId, pkt_player);
             if (authPlayerPkt(pkt_player, &r->from, 
                     PLAYING_GAME, PLAYING_GAME)) {
-               parsePlayerAction(m_userAction);
+               parsePlayerAction(m_userAction, pkt_player);
             }
             
             break;

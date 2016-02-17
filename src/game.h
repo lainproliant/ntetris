@@ -17,6 +17,6 @@ typedef enum _PLAYER_ACTION {
 STATE *initState();
 int speedToDelay(int speed);
 void destroyState(STATE *s);
-int parsePlayerAction(msg_user_action *action);
+int parsePlayerAction(msg_user_action *action, player_t *p);
 
 #endif
