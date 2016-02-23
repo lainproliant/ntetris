@@ -409,14 +409,14 @@ void Paint(STATE* state)
                 if (state->field[state->Bx * Y + X] == CLEARED) {
                         switch (state->do_clear) {
                         case CLEAR_FLASH:
-                            wattron(state->fieldwin, COLOR_PAIR(rand() % 7 + 1));
+                            wattrset(state->fieldwin, A_NORMAL | COLOR_PAIR(rand() % 7 + 1));
                             break;
                         case CLEAR_BLANK:
                         default:
                             break;
                     }
                 } else {
-                    wattron(state->fieldwin, COLOR_PAIR(state->field[state->Bx * Y + X]));
+                    wattrset(state->fieldwin, A_NORMAL | COLOR_PAIR(state->field[state->Bx * Y + X]));
                 }
 
                 waddch(state->fieldwin, ' ');
@@ -625,7 +625,7 @@ void TetradPaint(WINDOW* window, int y, int x, TETRAD* tetrad)
         wmove(window, y + X / Z - W, 2 * (x + X % Z) - 1);
         wattrset(window, A_NORMAL);
         if (shapes[tetrad->shape][X] == '#') {
-            wattron(window, COLOR_PAIR(tetrad->shape + 1));
+            wattrset(window, A_NORMAL | COLOR_PAIR(tetrad->shape + 1));
             waddch(window, ' ');
             waddch(window, ' ');
         }
@@ -982,8 +982,7 @@ void CarouselPrint(STATE* state,
 
     wmove(window, y, x);
     for (X = 0; X < len; X++) {
-        wattrset(window, A_NORMAL);
-        wattron(window, COLOR_PAIR(((state->ticks / s) + X) % 8 + 20) |
+        wattrset(window, A_NORMAL | COLOR_PAIR(((state->ticks / s) + X) % 8 + 20) |
                 A_BOLD);
         waddch(window, str[X]);
     }
