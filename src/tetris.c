@@ -222,27 +222,25 @@ void InitTerminal(STATE* state)
     size_t X = 0;
 
     initscr();
-    raw();
-    keypad(stdscr, TRUE);
+    cbreak();
     noecho();
-    nodelay(stdscr, TRUE);
-    curs_set(0);
+    nodelay(stdscr, true);
+    keypad(stdscr, true);
+    start_color();
 
     if (has_colors()) {
         start_color();
         use_default_colors();
     }
 
-    for(X = 1; X <= 8; X++) {
-        init_pair(X, X, X);
-        init_pair(X + 20, X, 0);
-    }
-
-    init_pair(11, COLOR_WHITE, COLOR_BLACK);
-    init_pair(12, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(13, COLOR_BLACK, COLOR_WHITE);
-    init_pair(14, COLOR_GREEN, COLOR_BLACK);
-    init_pair(15, COLOR_CYAN, COLOR_BLACK);
+    init_pair(0, COLOR_BLACK, COLOR_BLACK);
+    init_pair(1, COLOR_RED, COLOR_BLACK);
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(4, COLOR_BLUE, COLOR_BLACK);
+    init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(6, COLOR_CYAN, COLOR_BLACK);
+    init_pair(7, COLOR_WHITE, COLOR_BLACK);
     return;
 }
 
@@ -369,23 +367,23 @@ void Paint(STATE* state)
 {
     size_t X = 0, Y = 0;
 
-    attron(COLOR_PAIR(12) | A_BOLD);
+    attron(COLOR_PAIR(2) | A_BOLD);
     mvprintw(0, 0, "%s\n", gs_appname);
 
     move(state->Wy - 1, 0);
     for (X = 0; X < sizeof(state->keymap) / sizeof(int); X++) {
-        attron(COLOR_PAIR(15));
+        attron(COLOR_PAIR(5));
         printw("%s", keymap_desc[X]);
-        attron(COLOR_PAIR(11));
+        attron(COLOR_PAIR(1));
         printw("[");
-        attron(COLOR_PAIR(14));
+        attron(COLOR_PAIR(4));
         printw("%s", keyname(state->keymap[X]));
-        attron(COLOR_PAIR(11));
+        attron(COLOR_PAIR(1));
         printw("] ");
     }
 
     attroff(A_BOLD);
-    attron(COLOR_PAIR(13));
+    attron(COLOR_PAIR(3));
     mvprintw(state->Wy - 1, state->Wx - strlen(state->clock),
             "%s", state->clock);
 
@@ -407,20 +405,24 @@ void Paint(STATE* state)
                 if (state->field[state->Bx * Y + X] == CLEARED) {
                         switch (state->do_clear) {
                         case CLEAR_FLASH:
-                            wattron(state->fieldwin, COLOR_PAIR(rand() % 7 + 1));
+                            wattron(state->fieldwin, COLOR_PAIR(rand() % 7 + 1) | A_REVERSE);
                             break;
                         case CLEAR_BLANK:
                         default:
                             break;
                     }
                 } else {
-                    wattron(state->fieldwin, COLOR_PAIR(state->field[state->Bx * Y + X]));
+                    if (state->field[state->Bx * Y + X] != 0) {
+                        wattron(state->fieldwin, COLOR_PAIR(state->field[state->Bx * Y + X]) | A_REVERSE);
+                    }
                 }
 
                 waddch(state->fieldwin, ' ');
                 waddch(state->fieldwin, ' ');
+                wattrset(state->fieldwin, A_NORMAL);
             }
         }
+
     }
 
     if (state->pause_f) {
@@ -502,19 +504,19 @@ void StatusWindowPaint(STATE* state)
     wmove(state->statuswin, 1, 1);
     wattron(state->statuswin, A_BOLD);
     wprintw(state->statuswin, "Level:\t");
-    wattrset(state->statuswin, COLOR_PAIR(20 + (state->level % 7) + 1) | A_BOLD);
+    wattrset(state->statuswin, COLOR_PAIR((state->level % 7) + 1) | A_BOLD);
     wprintw(state->statuswin, "%d", state->level);
 
     wmove(state->statuswin, 2, 1);
     wattrset(state->statuswin, A_BOLD);
     wprintw(state->statuswin, "Lines:\t");
-    wattrset(state->statuswin, COLOR_PAIR(20 + ((state->lines / 10) % 7) + 1) | A_BOLD);
+    wattrset(state->statuswin, COLOR_PAIR(((state->lines / 10) % 7) + 1) | A_BOLD);
     wprintw(state->statuswin, "%d", state->lines);
 
     wmove(state->statuswin, 3, 1);
     wattrset(state->statuswin, A_BOLD);
     wprintw(state->statuswin, "Score:\t");
-    wattrset(state->statuswin, COLOR_PAIR(20 + (state->score / 10000 % 7) + 1) | A_BOLD);
+    wattrset(state->statuswin, COLOR_PAIR((state->score / 10000 % 7) + 1) | A_BOLD);
     wprintw(state->statuswin, "%d", state->score);
 
     wmove(state->statuswin, 4, 1);
@@ -621,13 +623,15 @@ void TetradPaint(WINDOW* window, int y, int x, TETRAD* tetrad)
 
     for(X = 8 * tetrad->rot; X < 8 * tetrad->rot + 8; X ++) {
         wmove(window, y + X / Z - W, 2 * (x + X % Z) - 1);
-        wattrset(window, A_NORMAL);
+        wattrset(window, A_REVERSE);
         if (shapes[tetrad->shape][X] == '#') {
             wattron(window, COLOR_PAIR(tetrad->shape + 1));
             waddch(window, ' ');
             waddch(window, ' ');
         }
     }
+
+    wattrset(window, A_NORMAL);
 
     return;
 }
@@ -981,7 +985,7 @@ void CarouselPrint(STATE* state,
     wmove(window, y, x);
     for (X = 0; X < len; X++) {
         wattrset(window, A_NORMAL);
-        wattron(window, COLOR_PAIR(((state->ticks / s) + X) % 8 + 20) |
+        wattron(window, COLOR_PAIR(((state->ticks / s) + X) % 7 + 1) |
                 A_BOLD);
         waddch(window, str[X]);
     }

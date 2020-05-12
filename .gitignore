@@ -4,3 +4,4 @@ src/ntetris
 *.a
 *.so
 *.dblite
+.mypy_cache

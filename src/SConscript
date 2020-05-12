@@ -2,8 +2,8 @@ import os
 import sys
 
 pkg_config_cmd = "pkg-config"
-srvliblist = ['glib-2.0', 'ncurses', 'uv']
-liblist = ['glib-2.0', 'ncurses', 'mtmalloc']
+srvliblist = ['glib-2.0', 'ncurses', 'uv', 'bsd']
+liblist = ['glib-2.0', 'ncurses']
 cflags = '-m64 -I/usr/local/include'
 linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
 
@@ -26,4 +26,3 @@ env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
 env.Program('ntetris', ntetris_cfiles, LIBS=liblist, CFLAGS=cflags, LINKFLAGS=linkflags)
 
 env.Program('ntetris_srv', ntetris_srv_files, LIBS=srvliblist, CFLAGS=cflags, LINKFLAGS=linkflags)
-

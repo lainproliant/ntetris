@@ -4,6 +4,9 @@
  * Released under the GNU General Public License
  */
 
+#include <curses.h>
+#include <glib.h>
+
 /*
  * The Tetrads
  * ####  #       #   ##   ##   #   ##
@@ -177,5 +180,3 @@ void CarouselPrint(STATE*, WINDOW*, int, int, int, const char*);
 
 int Power(int, int);
 int KeyParse(const char*);
-
-

@@ -8,7 +8,7 @@
 #include "strtonum.h"
 #include <mtmalloc.h>
 #else
-#include <strtonum.h>
+#include <bsd/stdlib.h>
 #endif
 
 #include <limits.h>
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 
     uv_loop_t *loop = uv_default_loop();
     uv_udp_t recv_sock;
-    uv_udp_init(loop, &recv_sock); 
+    uv_udp_init(loop, &recv_sock);
     struct sockaddr_in recaddr;
 
     uv_ip4_addr("0.0.0.0", port, &recaddr);
