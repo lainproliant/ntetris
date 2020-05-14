@@ -10,7 +10,7 @@ linkflags = '-m64 -L/usr/lib/64 -L/usr/local/lib'
 ntetris_cfiles = ['tetris.c', ]
 ntetris_srv_files = ['tetris_serv.c' ]
 
-if sys.platform == "darwin":
+if sys.platform == "darwin" and os.path.exists('/opt/local/bin/pkg-config'):
    pkg_config_cmd = '/opt/local/bin/pkg-config'
 
 if 'linux' in sys.platform:
@@ -18,8 +18,9 @@ if 'linux' in sys.platform:
 
 if 'sunos' in sys.platform:
   cflags = ' '.join((cflags, '-I/usr/include/ncurses'))
-  ntetris_cfiles.append('strtonum.c')
-  ntetris_srv_files.append('strtonum.c')
+
+ntetris_cfiles.append('strtonum.c')
+ntetris_srv_files.append('strtonum.c')
 
 env = Environment(ENV = os.environ)
 env.ParseConfig(pkg_config_cmd + ' --cflags --libs glib-2.0')
