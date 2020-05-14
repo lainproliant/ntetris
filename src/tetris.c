@@ -270,8 +270,7 @@ void DimensionWindows(STATE* state)
     if (state->Sbx) {
         state->statuswin = newwin(state->Sby,
                 state->Sbx,
-                (state->Wy - state->Sby) / 2,
-                (state->Wy - state->Sx) + 1);
+                2, 2);
     }
 
     //wbkgd(state->fieldwin, COLOR_PAIR(11));
